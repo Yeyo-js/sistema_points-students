@@ -4,6 +4,8 @@ import { AuthProvider, useAuth } from './context/authContext';
 import LoginPage from './pages/auth/login';
 import RegisterPage from './pages/auth/register';
 import DashboardPage from './pages/dashboard/dashboard';
+import CoursesPage from './pages/courses/courses';
+import StudentsPage from './pages/students/students';
 
 // Componente de loading
 const LoadingScreen = () => (
@@ -96,6 +98,25 @@ const AppRoutes = () => {
         element={
           <PrivateRoute>
             <DashboardPage />
+          </PrivateRoute>
+        } 
+      />
+      
+      <Route 
+        path="/dashboard/courses" 
+        element={
+          <PrivateRoute>
+            <CoursesPage />
+          </PrivateRoute>
+        } 
+      />
+
+      {/* RUTA DE ESTUDIANTES */}
+      <Route 
+        path="/dashboard/students" 
+        element={
+          <PrivateRoute>
+            <StudentsPage />
           </PrivateRoute>
         } 
       />

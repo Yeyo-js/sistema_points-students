@@ -13,9 +13,32 @@ class StudentService {
 
   // Obtener estudiantes por curso
   async getStudentsByCourse(courseId) {
-    return await ipcService.invoke('student:getByCourse', {
-      courseId
-    });
+    try {
+      const result = await ipcService.invoke('student:getByCourse', {
+        courseId
+      });
+      
+      // Asegurarnos de que siempre devuelve el formato correcto
+      if (result && result.success !== false) {
+        // Si result.students existe, usarlo; si no, asumir que result ES el array
+        const students = result.students || result;
+        return {
+          success: true,
+          students: Array.isArray(students) ? students : []
+        };
+      }
+      
+      return {
+        success: false,
+        students: []
+      };
+    } catch (error) {
+      console.error('Error en StudentService.getStudentsByCourse:', error);
+      return {
+        success: false,
+        students: []
+      };
+    }
   }
 
   // Obtener estudiante por ID

@@ -5,7 +5,7 @@ function registerStudentHandlers() {
   // Crear estudiante
   ipcMain.handle('student:create', async (event, { courseId, fullName, studentCode, listNumber }) => {
     try {
-      return studentService.createStudent(courseId, fullName, studentCode, listNumber);
+      return await studentService.createStudent(courseId, fullName, studentCode, listNumber);
     } catch (error) {
       console.error('Error en IPC student:create:', error);
       return { success: false, error: 'Error al crear estudiante' };
@@ -15,17 +15,30 @@ function registerStudentHandlers() {
   // Obtener estudiantes por curso
   ipcMain.handle('student:getByCourse', async (event, { courseId }) => {
     try {
-      return studentService.getStudentsByCourse(courseId);
+      const result = await studentService.getStudentsByCourse(courseId);
+      
+      // Asegurar que siempre devuelve el formato correcto
+      if (result && result.success) {
+        return {
+          success: true,
+          students: result.students || []
+        };
+      }
+      
+      return {
+        success: false,
+        students: []
+      };
     } catch (error) {
       console.error('Error en IPC student:getByCourse:', error);
-      return { success: false, error: 'Error al obtener estudiantes' };
+      return { success: false, students: [], error: 'Error al obtener estudiantes' };
     }
   });
 
   // Obtener estudiante por ID
   ipcMain.handle('student:getById', async (event, { studentId }) => {
     try {
-      return studentService.getStudentById(studentId);
+      return await studentService.getStudentById(studentId);
     } catch (error) {
       console.error('Error en IPC student:getById:', error);
       return { success: false, error: 'Error al obtener estudiante' };
@@ -35,7 +48,7 @@ function registerStudentHandlers() {
   // Actualizar estudiante
   ipcMain.handle('student:update', async (event, { studentId, fullName, studentCode, listNumber }) => {
     try {
-      return studentService.updateStudent(studentId, fullName, studentCode, listNumber);
+      return await studentService.updateStudent(studentId, fullName, studentCode, listNumber);
     } catch (error) {
       console.error('Error en IPC student:update:', error);
       return { success: false, error: 'Error al actualizar estudiante' };
@@ -45,7 +58,7 @@ function registerStudentHandlers() {
   // Eliminar estudiante
   ipcMain.handle('student:delete', async (event, { studentId }) => {
     try {
-      return studentService.deleteStudent(studentId);
+      return await studentService.deleteStudent(studentId);
     } catch (error) {
       console.error('Error en IPC student:delete:', error);
       return { success: false, error: 'Error al eliminar estudiante' };

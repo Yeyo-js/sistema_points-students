@@ -1,119 +1,240 @@
 const studentRepository = require('../database/repositories/studentRepository');
-const { getDatabase } = require('../database');
+const courseRepository = require('../database/repositories/courseRepository');
+const Validators = require('../../shared/utils/validators');
+const ErrorHandler = require('../../shared/utils/errorHandler');
 
 class StudentService {
-  constructor() {
-    this.db = getDatabase();
-  }
-
   // Crear estudiante con validaciones
-  createStudent(courseId, fullName, studentCode, listNumber) {
+  async createStudent(courseId, fullName, studentCode, listNumber) {
     try {
-      // Validaciones
-      if (!fullName || fullName.trim() === '') {
-        return { success: false, error: 'El nombre completo es requerido' };
+      // ========== VALIDACIONES ==========
+      
+      if (!Validators.isPositiveInteger(courseId)) {
+        return ErrorHandler.handleValidationError('courseId', 'ID de curso inválido');
       }
 
+      // Sanitizar inputs
+      fullName = Validators.sanitize(fullName);
+      if (studentCode) {
+        studentCode = Validators.sanitize(studentCode);
+      }
+
+      // Validar campos requeridos
+      if (!fullName || fullName.trim() === '') {
+        return ErrorHandler.handleValidationError('fullName', 'El nombre completo es requerido');
+      }
+
+      if (!Validators.isValidLength(fullName, 3, 100)) {
+        return ErrorHandler.handleValidationError('fullName', 'El nombre debe tener entre 3 y 100 caracteres');
+      }
+
+      // Validar código de estudiante (máximo 14 dígitos)
+      if (studentCode && studentCode.length > 14) {
+        return ErrorHandler.handleValidationError('studentCode', 'El código de estudiante no puede exceder 14 caracteres');
+      }
+
+      // Validar número de lista
       if (!listNumber || listNumber < 1) {
-        return { success: false, error: 'El número de lista debe ser mayor a 0' };
+        return ErrorHandler.handleValidationError('listNumber', 'El número de lista debe ser mayor a 0');
+      }
+
+      // Validar que el número de lista no exceda 3 dígitos (999)
+      if (listNumber > 999) {
+        return ErrorHandler.handleValidationError('listNumber', 'El número de lista no puede exceder 999');
+      }
+
+      // Validar seguridad de inputs
+      if (!Validators.isSafeInput(fullName) || (studentCode && !Validators.isSafeInput(studentCode))) {
+        ErrorHandler.logSecurityEvent('MALICIOUS_INPUT_STUDENT', { courseId, fullName });
+        return ErrorHandler.createError(
+          ErrorHandler.ErrorTypes.VALIDATION,
+          'Se detectaron caracteres no permitidos'
+        );
+      }
+
+      // Verificar que el curso existe
+      const course = courseRepository.findById(courseId);
+      if (!course) {
+        return ErrorHandler.handleNotFoundError('Curso');
       }
 
       // Verificar que no exista el número de lista en el curso
       if (studentRepository.existsListNumber(courseId, listNumber)) {
-        return { success: false, error: 'Ya existe un estudiante con ese número de lista en este curso' };
+        return ErrorHandler.createError(
+          ErrorHandler.ErrorTypes.DUPLICATE,
+          'Ya existe un estudiante con ese número de lista en este curso'
+        );
       }
 
-      // Transacción para crear estudiante y su registro de totales
-      const transaction = this.db.transaction(() => {
-        // Crear estudiante
-        const result = studentRepository.insert(courseId, fullName, studentCode, listNumber);
-        const studentId = result.lastInsertRowid;
+      // ========== CREAR ESTUDIANTE ==========
+      
+      const result = studentRepository.insert(courseId, fullName, studentCode, listNumber);
+      const studentId = result.lastInsertRowid;
 
-        // Crear registro en student_totals
-        const totalStmt = this.db.prepare(`
-          INSERT INTO student_totals (student_id, course_id)
-          VALUES (?, ?)
-        `);
-        totalStmt.run(studentId, courseId);
+      const student = studentRepository.findById(studentId);
 
-        return studentId;
-      });
-
-      const studentId = transaction();
-      return { id: studentId, success: true };
+      return { 
+        success: true, 
+        student,
+        id: studentId,
+        message: 'Estudiante creado exitosamente' 
+      };
 
     } catch (error) {
-      console.error('Error al crear estudiante:', error);
-      return { success: false, error: error.message };
+      ErrorHandler.logCriticalError(error, { action: 'createStudent', courseId });
+      return ErrorHandler.handleDatabaseError(error);
     }
   }
 
   // Obtener estudiantes por curso
-  getStudentsByCourse(courseId) {
+  async getStudentsByCourse(courseId) {
     try {
-      return studentRepository.findByCourse(courseId);
+      if (!Validators.isPositiveInteger(courseId)) {
+        return ErrorHandler.handleValidationError('courseId', 'ID de curso inválido');
+      }
+
+      const students = studentRepository.findByCourse(courseId);
+      
+      return {
+        success: true,
+        students
+      };
+
     } catch (error) {
-      console.error('Error al obtener estudiantes:', error);
-      return [];
+      ErrorHandler.logCriticalError(error, { action: 'getStudentsByCourse', courseId });
+      return ErrorHandler.handleDatabaseError(error);
     }
   }
 
   // Obtener estudiante por ID
-  getStudentById(studentId) {
+  async getStudentById(studentId) {
     try {
-      return studentRepository.findById(studentId);
+      if (!Validators.isPositiveInteger(studentId)) {
+        return ErrorHandler.handleValidationError('studentId', 'ID de estudiante inválido');
+      }
+
+      const student = studentRepository.findById(studentId);
+      
+      if (!student) {
+        return ErrorHandler.handleNotFoundError('Estudiante');
+      }
+
+      return {
+        success: true,
+        student
+      };
+
     } catch (error) {
-      console.error('Error al obtener estudiante:', error);
-      return null;
+      ErrorHandler.logCriticalError(error, { action: 'getStudentById', studentId });
+      return ErrorHandler.handleDatabaseError(error);
     }
   }
 
   // Actualizar estudiante con validaciones
-  updateStudent(studentId, fullName, studentCode, listNumber) {
+  async updateStudent(studentId, fullName, studentCode, listNumber) {
     try {
-      // Validaciones
-      if (!fullName || fullName.trim() === '') {
-        return { success: false, error: 'El nombre completo es requerido' };
-      }
-
-      if (!listNumber || listNumber < 1) {
-        return { success: false, error: 'El número de lista debe ser mayor a 0' };
+      // ========== VALIDACIONES ==========
+      
+      if (!Validators.isPositiveInteger(studentId)) {
+        return ErrorHandler.handleValidationError('studentId', 'ID de estudiante inválido');
       }
 
       // Verificar que el estudiante existe
-      const student = studentRepository.findById(studentId);
-      if (!student) {
-        return { success: false, error: 'Estudiante no encontrado' };
+      const existingStudent = studentRepository.findById(studentId);
+      if (!existingStudent) {
+        return ErrorHandler.handleNotFoundError('Estudiante');
+      }
+
+      // Sanitizar inputs
+      fullName = Validators.sanitize(fullName);
+      if (studentCode) {
+        studentCode = Validators.sanitize(studentCode);
+      }
+
+      // Validar campos
+      if (!fullName || fullName.trim() === '') {
+        return ErrorHandler.handleValidationError('fullName', 'El nombre completo es requerido');
+      }
+
+      if (!Validators.isValidLength(fullName, 3, 100)) {
+        return ErrorHandler.handleValidationError('fullName', 'El nombre debe tener entre 3 y 100 caracteres');
+      }
+
+      // Validar código de estudiante (máximo 14 dígitos)
+      if (studentCode && studentCode.length > 14) {
+        return ErrorHandler.handleValidationError('studentCode', 'El código de estudiante no puede exceder 14 caracteres');
+      }
+
+      // Validar número de lista
+      if (!listNumber || listNumber < 1) {
+        return ErrorHandler.handleValidationError('listNumber', 'El número de lista debe ser mayor a 0');
+      }
+
+      // Validar que el número de lista no exceda 3 dígitos (999)
+      if (listNumber > 999) {
+        return ErrorHandler.handleValidationError('listNumber', 'El número de lista no puede exceder 999');
+      }
+
+      // Validar seguridad
+      if (!Validators.isSafeInput(fullName) || (studentCode && !Validators.isSafeInput(studentCode))) {
+        ErrorHandler.logSecurityEvent('MALICIOUS_INPUT_STUDENT_UPDATE', { studentId });
+        return ErrorHandler.createError(
+          ErrorHandler.ErrorTypes.VALIDATION,
+          'Se detectaron caracteres no permitidos'
+        );
       }
 
       // Verificar número de lista duplicado (excluyendo el mismo estudiante)
-      if (studentRepository.existsListNumber(student.course_id, listNumber, studentId)) {
-        return { success: false, error: 'Ya existe un estudiante con ese número de lista en este curso' };
+      if (studentRepository.existsListNumber(existingStudent.course_id, listNumber, studentId)) {
+        return ErrorHandler.createError(
+          ErrorHandler.ErrorTypes.DUPLICATE,
+          'Ya existe un estudiante con ese número de lista en este curso'
+        );
       }
 
+      // ========== ACTUALIZAR ==========
+      
       studentRepository.update(studentId, fullName, studentCode, listNumber);
-      return { success: true };
+
+      const updatedStudent = studentRepository.findById(studentId);
+
+      return { 
+        success: true,
+        student: updatedStudent,
+        message: 'Estudiante actualizado exitosamente'
+      };
 
     } catch (error) {
-      console.error('Error al actualizar estudiante:', error);
-      return { success: false, error: error.message };
+      ErrorHandler.logCriticalError(error, { action: 'updateStudent', studentId });
+      return ErrorHandler.handleDatabaseError(error);
     }
   }
 
   // Eliminar estudiante
-  deleteStudent(studentId) {
+  async deleteStudent(studentId) {
     try {
-      const student = studentRepository.findById(studentId);
-      if (!student) {
-        return { success: false, error: 'Estudiante no encontrado' };
+      if (!Validators.isPositiveInteger(studentId)) {
+        return ErrorHandler.handleValidationError('studentId', 'ID de estudiante inválido');
       }
 
+      const student = studentRepository.findById(studentId);
+      if (!student) {
+        return ErrorHandler.handleNotFoundError('Estudiante');
+      }
+
+      // TODO: Verificar si tiene puntos asignados y advertir al usuario
+      // Por ahora permitimos eliminarlo (los puntos se eliminarán por CASCADE)
+
       studentRepository.delete(studentId);
-      return { success: true };
+
+      return { 
+        success: true,
+        message: 'Estudiante eliminado exitosamente'
+      };
 
     } catch (error) {
-      console.error('Error al eliminar estudiante:', error);
-      return { success: false, error: error.message };
+      ErrorHandler.logCriticalError(error, { action: 'deleteStudent', studentId });
+      return ErrorHandler.handleDatabaseError(error);
     }
   }
 }

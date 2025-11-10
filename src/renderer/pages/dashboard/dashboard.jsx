@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import DashboardLayout from '../../components/templates/DashboardLayout/dashboardLayout';
+import DashboardLayout from '../../components/templates/dashboardLayout/dashboardLayout';
 import Card from '../../components/atoms/card';
 import { useAuth } from '../../context/authContext';
 import './dashboard.css';

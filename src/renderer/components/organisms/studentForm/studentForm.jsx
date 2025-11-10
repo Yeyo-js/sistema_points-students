@@ -2,18 +2,16 @@ import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import Button from '../../atoms/button';
 import FormField from '../../molecules/formField';
-import { courseService } from '../../../services';
-import { useAuth } from '../../../context/authContext';
-import './courseForm.css';
+import { studentService } from '../../../services';
+import './studentForm.css';
 
-const CourseForm = ({ course = null, onSuccess, onCancel }) => {
-  const { user } = useAuth();
-  const isEditMode = !!course;
+const StudentForm = ({ student = null, courseId, onSuccess, onCancel }) => {
+  const isEditMode = !!student;
 
   const [formData, setFormData] = useState({
-    name: '',
-    level: '',
-    academicPeriod: ''
+    fullName: '',
+    studentCode: '',
+    listNumber: ''
   });
 
   const [errors, setErrors] = useState({});
@@ -21,14 +19,14 @@ const CourseForm = ({ course = null, onSuccess, onCancel }) => {
   const [generalError, setGeneralError] = useState('');
 
   useEffect(() => {
-    if (course) {
+    if (student) {
       setFormData({
-        name: course.name || '',
-        level: course.level || '',
-        academicPeriod: course.academic_period || ''
+        fullName: student.full_name || '',
+        studentCode: student.student_code || '',
+        listNumber: student.list_number || ''
       });
     }
-  }, [course]);
+  }, [student]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -52,22 +50,16 @@ const CourseForm = ({ course = null, onSuccess, onCancel }) => {
   const validateForm = () => {
     const newErrors = {};
 
-    if (!formData.name.trim()) {
-      newErrors.name = 'El nombre del curso es requerido';
-    } else if (formData.name.length < 3) {
-      newErrors.name = 'El nombre debe tener al menos 3 caracteres';
+    if (!formData.fullName.trim()) {
+      newErrors.fullName = 'El nombre completo es requerido';
+    } else if (formData.fullName.length < 3) {
+      newErrors.fullName = 'El nombre debe tener al menos 3 caracteres';
     }
 
-    if (!formData.level.trim()) {
-      newErrors.level = 'El grado/ciclo es requerido';
-    } else if (formData.level.length < 2) {
-      newErrors.level = 'El grado/ciclo debe tener al menos 2 caracteres';
-    }
-
-    if (!formData.academicPeriod.trim()) {
-      newErrors.academicPeriod = 'El período académico es requerido';
-    } else if (formData.academicPeriod.length < 2) {
-      newErrors.academicPeriod = 'El período académico debe tener al menos 2 caracteres';
+    if (!formData.listNumber) {
+      newErrors.listNumber = 'El número de lista es requerido';
+    } else if (formData.listNumber < 1) {
+      newErrors.listNumber = 'El número de lista debe ser mayor a 0';
     }
 
     setErrors(newErrors);
@@ -88,32 +80,31 @@ const CourseForm = ({ course = null, onSuccess, onCancel }) => {
       let result;
 
       if (isEditMode) {
-        result = await courseService.updateCourse(
-          course.id,
-          user.id,
-          formData.name,
-          formData.level,
-          formData.academicPeriod
+        result = await studentService.updateStudent(
+          student.id,
+          formData.fullName,
+          formData.studentCode || null,
+          parseInt(formData.listNumber)
         );
       } else {
-        result = await courseService.createCourse(
-          user.id,
-          formData.name,
-          formData.level,
-          formData.academicPeriod
+        result = await studentService.createStudent(
+          courseId,
+          formData.fullName,
+          formData.studentCode || null,
+          parseInt(formData.listNumber)
         );
       }
 
       if (result.success) {
-        console.log(`✅ Curso ${isEditMode ? 'actualizado' : 'creado'} exitosamente`);
+        console.log(`✅ Estudiante ${isEditMode ? 'actualizado' : 'creado'} exitosamente`);
         if (onSuccess) {
-          onSuccess(result.course);
+          onSuccess(result);
         }
       } else {
-        setGeneralError(result.message || result.error || `Error al ${isEditMode ? 'actualizar' : 'crear'} curso`);
+        setGeneralError(result.error || `Error al ${isEditMode ? 'actualizar' : 'crear'} estudiante`);
       }
     } catch (error) {
-      console.error('Error en formulario de curso:', error);
+      console.error('Error en formulario de estudiante:', error);
       setGeneralError('Error de conexión. Intenta nuevamente.');
     } finally {
       setLoading(false);
@@ -121,9 +112,9 @@ const CourseForm = ({ course = null, onSuccess, onCancel }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="course-form">
+    <form onSubmit={handleSubmit} className="student-form">
       {generalError && (
-        <div className="course-form__error-banner">
+        <div className="student-form__error-banner">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <circle cx="12" cy="12" r="10"/>
             <line x1="12" y1="8" x2="12" y2="12"/>
@@ -134,63 +125,66 @@ const CourseForm = ({ course = null, onSuccess, onCancel }) => {
       )}
 
       <FormField
-        label="Nombre del Curso"
+        label="Nombre Completo"
         type="text"
-        name="name"
-        value={formData.name}
+        name="fullName"
+        value={formData.fullName}
         onChange={handleChange}
-        placeholder="Ej: Matemáticas A, Programación Web"
-        error={errors.name}
+        placeholder="Ej: Juan Pérez García"
+        error={errors.fullName}
         required
         disabled={loading}
         icon={
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
-            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+            <circle cx="12" cy="7" r="4"/>
           </svg>
         }
       />
 
       <FormField
-        label="Grado / Ciclo"
+        label="Código de Estudiante"
         type="text"
-        name="level"
-        value={formData.level}
+        name="studentCode"
+        value={formData.studentCode}
         onChange={handleChange}
-        placeholder="Ej: 3° Secundaria, Ciclo IV, 2do Grado"
-        error={errors.level}
-        required
+        placeholder="Ej: 2024001 (Opcional)"
+        error={errors.studentCode}
         disabled={loading}
+        maxLength={14}
         icon={
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-            <path d="M2 17l10 5 10-5"/>
-            <path d="M2 12l10 5 10-5"/>
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
           </svg>
         }
       />
 
       <FormField
-        label="Período Académico"
-        type="text"
-        name="academicPeriod"
-        value={formData.academicPeriod}
+        label="Número de Lista"
+        type="number"
+        name="listNumber"
+        value={formData.listNumber}
         onChange={handleChange}
-        placeholder="Ej: 2025-I, Semestre 2024-II, Ciclo I-2025"
-        error={errors.academicPeriod}
+        placeholder="Ej: 15"
+        error={errors.listNumber}
         required
         disabled={loading}
+        min="1"
+        max="999"
         icon={
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-            <line x1="16" y1="2" x2="16" y2="6"/>
-            <line x1="8" y1="2" x2="8" y2="6"/>
-            <line x1="3" y1="10" x2="21" y2="10"/>
+            <line x1="8" y1="6" x2="21" y2="6"/>
+            <line x1="8" y1="12" x2="21" y2="12"/>
+            <line x1="8" y1="18" x2="21" y2="18"/>
+            <line x1="3" y1="6" x2="3.01" y2="6"/>
+            <line x1="3" y1="12" x2="3.01" y2="12"/>
+            <line x1="3" y1="18" x2="3.01" y2="18"/>
           </svg>
         }
       />
 
-      <div className="course-form__actions">
+      <div className="student-form__actions">
         {onCancel && (
           <Button
             type="button"
@@ -211,7 +205,7 @@ const CourseForm = ({ course = null, onSuccess, onCancel }) => {
         >
           {loading 
             ? (isEditMode ? 'Actualizando...' : 'Creando...') 
-            : (isEditMode ? 'Actualizar Curso' : 'Crear Curso')
+            : (isEditMode ? 'Actualizar Estudiante' : 'Crear Estudiante')
           }
         </Button>
       </div>
@@ -219,10 +213,11 @@ const CourseForm = ({ course = null, onSuccess, onCancel }) => {
   );
 };
 
-CourseForm.propTypes = {
-  course: PropTypes.object,
+StudentForm.propTypes = {
+  student: PropTypes.object,
+  courseId: PropTypes.number.isRequired,
   onSuccess: PropTypes.func,
   onCancel: PropTypes.func
 };
 
-export default CourseForm;
+export default StudentForm;
