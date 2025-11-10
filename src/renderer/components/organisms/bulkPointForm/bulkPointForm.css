@@ -1,0 +1,130 @@
+.bulk-point-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.bulk-point-form__error-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: rgba(255, 107, 107, 0.1);
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-md);
+  color: var(--color-danger);
+  font-size: 0.9rem;
+  animation: shake 0.4s ease-in-out;
+}
+
+.bulk-point-form__error-banner svg {
+  flex-shrink: 0;
+}
+
+/* Info Banner */
+.bulk-point-form__info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  background: linear-gradient(
+    135deg,
+    rgba(0, 217, 255, 0.05) 0%,
+    rgba(0, 255, 170, 0.05) 100%
+  );
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+}
+
+.bulk-point-form__info-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-bg-dark);
+  flex-shrink: 0;
+  box-shadow: 0 0 15px rgba(0, 217, 255, 0.5);
+}
+
+.bulk-point-form__info-details h4 {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0 0 0.25rem 0;
+}
+
+.bulk-point-form__info-details p {
+  font-size: 0.9375rem;
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.bulk-point-form__info-details strong {
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+/* Custom Type Input */
+.bulk-point-form__custom-type {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+  background: linear-gradient(
+    135deg,
+    rgba(0, 217, 255, 0.03) 0%,
+    rgba(0, 255, 170, 0.03) 100%
+  );
+  border-radius: var(--radius-md);
+  border: 1px dashed var(--color-border);
+  animation: slideDown 0.3s ease-out;
+}
+
+.bulk-point-form__custom-hint {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  margin: 0;
+  padding: 0.5rem;
+  background: rgba(0, 217, 255, 0.05);
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--color-primary);
+}
+
+.bulk-point-form__actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.bulk-point-form__actions button {
+  flex: 1;
+}
+
+@keyframes shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  10%, 30%, 50%, 70%, 90% {
+    transform: translateX(-4px);
+  }
+  20%, 40%, 60%, 80% {
+    transform: translateX(4px);
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

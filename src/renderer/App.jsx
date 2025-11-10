@@ -6,6 +6,7 @@ import RegisterPage from './pages/auth/register';
 import DashboardPage from './pages/dashboard/dashboard';
 import CoursesPage from './pages/courses/courses';
 import StudentsPage from './pages/students/students';
+import PointsPage from './pages/points/points';
 
 // Componente de loading
 const LoadingScreen = () => (
@@ -111,12 +112,21 @@ const AppRoutes = () => {
         } 
       />
 
-      {/* RUTA DE ESTUDIANTES */}
       <Route 
         path="/dashboard/students" 
         element={
           <PrivateRoute>
             <StudentsPage />
+          </PrivateRoute>
+        } 
+      />
+
+      {/* RUTA DE PUNTOS */}
+      <Route 
+        path="/dashboard/points" 
+        element={
+          <PrivateRoute>
+            <PointsPage />
           </PrivateRoute>
         } 
       />
