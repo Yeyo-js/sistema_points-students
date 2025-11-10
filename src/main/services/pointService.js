@@ -4,13 +4,8 @@ const participationTypeRepository = require('../database/repositories/participat
 const courseRepository = require('../database/repositories/courseRepository');
 const Validators = require('../../shared/utils/validators');
 const ErrorHandler = require('../../shared/utils/errorHandler');
-const { getDatabase } = require('../database');
 
 class PointService {
-  constructor() {
-    this.db = getDatabase();
-  }
-
   // Asignar puntos a un estudiante
   assignPoints(studentId, userId, participationTypeId, pointsValue, reason = null) {
     try {
@@ -77,25 +72,21 @@ class PointService {
         return ErrorHandler.handleAuthorizationError('No tienes permiso para usar este tipo de participación');
       }
 
-      // ========== ASIGNAR PUNTOS CON TRANSACCIÓN ==========
+      // ========== ASIGNAR PUNTOS SIN TRANSACCIÓN ==========
+      // sql.js no soporta transacciones como better-sqlite3
+      // Ejecutamos las operaciones secuencialmente
       
-      const transaction = this.db.transaction(() => {
-        // Insertar punto
-        const result = pointRepository.insert(studentId, userId, participationTypeId, pointsValue, reason);
-        const pointId = result.lastInsertRowid;
+      // 1. Insertar punto
+      const result = pointRepository.insert(studentId, userId, participationTypeId, pointsValue, reason);
+      const pointId = result.lastInsertRowid;
 
-        // Actualizar totales del estudiante
-        pointRepository.updateStudentTotals(studentId);
+      // 2. Actualizar totales del estudiante
+      pointRepository.updateStudentTotals(studentId);
 
-        return pointId;
-      });
-
-      const pointId = transaction();
-
-      // Obtener el punto creado con toda la información
+      // 3. Obtener el punto creado con toda la información
       const point = pointRepository.findById(pointId);
 
-      // Obtener totales actualizados
+      // 4. Obtener totales actualizados
       const updatedStudent = studentRepository.findById(studentId);
 
       return {
@@ -248,22 +239,18 @@ class PointService {
         return ErrorHandler.handleAuthorizationError('No tienes permiso para usar este tipo de participación');
       }
 
-      // ========== ACTUALIZAR CON TRANSACCIÓN ==========
+      // ========== ACTUALIZAR SIN TRANSACCIÓN ==========
       
-      const transaction = this.db.transaction(() => {
-        // Actualizar punto
-        pointRepository.update(pointId, participationTypeId, pointsValue, reason);
+      // 1. Actualizar punto
+      pointRepository.update(pointId, participationTypeId, pointsValue, reason);
 
-        // Recalcular totales del estudiante
-        pointRepository.updateStudentTotals(existingPoint.student_id);
-      });
+      // 2. Recalcular totales del estudiante
+      pointRepository.updateStudentTotals(existingPoint.student_id);
 
-      transaction();
-
-      // Obtener punto actualizado
+      // 3. Obtener punto actualizado
       const updatedPoint = pointRepository.findById(pointId);
 
-      // Obtener totales actualizados
+      // 4. Obtener totales actualizados
       const student = studentRepository.findById(existingPoint.student_id);
 
       return {
@@ -303,19 +290,15 @@ class PointService {
         return ErrorHandler.handleAuthorizationError('No tienes permiso para eliminar este punto');
       }
 
-      // ========== ELIMINAR CON TRANSACCIÓN ==========
+      // ========== ELIMINAR SIN TRANSACCIÓN ==========
       
-      const transaction = this.db.transaction(() => {
-        // Eliminar punto
-        pointRepository.delete(pointId);
+      // 1. Eliminar punto
+      pointRepository.delete(pointId);
 
-        // Recalcular totales del estudiante
-        pointRepository.updateStudentTotals(point.student_id);
-      });
+      // 2. Recalcular totales del estudiante
+      pointRepository.updateStudentTotals(point.student_id);
 
-      transaction();
-
-      // Obtener totales actualizados
+      // 3. Obtener totales actualizados
       const student = studentRepository.findById(point.student_id);
 
       return {

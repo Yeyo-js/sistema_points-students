@@ -1,12 +1,16 @@
 import authService from './authService';
 import courseService from './courseService';
-export { default as studentService } from './studentService';
-export { default as pointService } from './pointService';
-export { default as participationTypeService } from './participationTypeService';
-export { default as ipcService } from './ipcService';
+import studentService from './studentService';
+import pointService from './pointService';
+import participationTypeService from './participationTypeService';
+import ipcService from './ipcService';
 
 
 export {
   authService,
-  courseService
+  courseService,
+  studentService,
+  pointService,
+  participationTypeService,
+  ipcService
 };
