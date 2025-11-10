@@ -1,0 +1,102 @@
+.select-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.select {
+  width: 100%;
+  padding: 0.875rem 3rem 0.875rem 1rem;
+  font-size: 1rem;
+  font-family: inherit;
+  color: var(--color-text);
+  background: var(--color-bg-input);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  transition: all var(--transition-normal);
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+}
+
+.select:hover:not(:disabled) {
+  border-color: rgba(0, 217, 255, 0.4);
+}
+
+.select:focus {
+  border-color: var(--color-primary);
+  background: var(--color-bg-card);
+  box-shadow: 0 0 0 3px var(--color-primary-light);
+}
+
+.select--with-icon {
+  padding-left: 3rem;
+}
+
+.select__icon {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  font-size: 1.25rem;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.select:focus ~ .select__icon,
+.select:not([value=""]) ~ .select__icon {
+  color: var(--color-primary);
+}
+
+.select__arrow {
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+  z-index: 1;
+  transition: all var(--transition-fast);
+}
+
+.select:focus ~ .select__arrow {
+  color: var(--color-primary);
+  transform: translateY(-50%) rotate(180deg);
+}
+
+.select--error {
+  border-color: var(--color-danger);
+  background: rgba(255, 107, 107, 0.05);
+}
+
+.select--error:focus {
+  border-color: var(--color-danger);
+  box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.1);
+}
+
+.select--disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: var(--color-bg-medium);
+}
+
+/* Estilos de opciones */
+.select option {
+  background: var(--color-bg-card);
+  color: var(--color-text);
+  padding: 0.5rem;
+}
+
+.select option:hover {
+  background: var(--color-primary-light);
+}
+
+.select option:disabled {
+  color: var(--color-text-muted);
+}

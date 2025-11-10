@@ -1,0 +1,12 @@
+# Ignorar archivos temporales
+*.log
+*.tmp
+
+# Ignorar carpeta node_modules
+node_modules/
+
+package-lock.json
+
+# Ignorar archivos de configuración personal
+.env
+.vscode/

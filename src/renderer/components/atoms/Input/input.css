@@ -1,0 +1,98 @@
+/* Input Wrapper */
+.input-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+/* Input Base */
+.input {
+  width: 100%;
+  padding: 0.875rem 1rem;
+  font-size: 1rem;
+  font-family: inherit;
+  color: var(--color-text);
+  background: rgba(255, 255, 255, 0.187);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.363);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  transition: all var(--transition-normal);
+  outline: none;
+}
+
+.input::placeholder {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.input:hover:not(:disabled) {
+  border-color: rgba(108, 92, 231, 0.4);
+}
+
+.input:focus {
+  border-color: var(--color-primary);
+  background: rgba(66, 66, 66, 0.128);
+  box-shadow: 0 0 0 3px var(--color-primary-light);
+}
+
+/* Input con icono */
+.input--with-icon {
+  padding-left: 3rem;
+}
+
+.input__icon {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: rgba(255, 255, 255, 0.6) ;
+  display: flex;
+  align-items: center;
+  font-size: 1.25rem;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.input:focus ~ .input__icon,
+.input:not(:placeholder-shown) ~ .input__icon {
+  color: var(--color-primary);
+}
+
+/* States */
+.input--error {
+  border-color: var(--color-danger);
+  background: rgba(255, 107, 107, 0.05);
+}
+
+.input--error:focus {
+  border-color: var(--color-danger);
+  box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.1);
+}
+
+.input--disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: var(--color-bg-medium);
+}
+
+/* Input Number - Ocultar flechas */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+/* Autofill styling */
+.input:-webkit-autofill,
+.input:-webkit-autofill:hover,
+.input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--color-text);
+  -webkit-box-shadow: 0 0 0 1000px var(--color-bg-input) inset;
+  transition: background-color 5000s ease-in-out 0s;
+  border-color: var(--color-primary);
+}

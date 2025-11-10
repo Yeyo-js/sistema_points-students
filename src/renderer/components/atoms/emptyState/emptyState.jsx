@@ -1,0 +1,34 @@
+import React from 'react';
+import PropTypes from 'prop-types';
+import './emptyState.css';
+
+const EmptyState = ({ 
+  icon, 
+  title, 
+  description, 
+  action 
+}) => {
+  return (
+    <div className="empty-state">
+      <div className="empty-state__icon">
+        {icon}
+      </div>
+      <h3 className="empty-state__title">{title}</h3>
+      <p className="empty-state__description">{description}</p>
+      {action && (
+        <div className="empty-state__action">
+          {action}
+        </div>
+      )}
+    </div>
+  );
+};
+
+EmptyState.propTypes = {
+  icon: PropTypes.node.isRequired,
+  title: PropTypes.string.isRequired,
+  description: PropTypes.string.isRequired,
+  action: PropTypes.node
+};
+
+export default EmptyState;
