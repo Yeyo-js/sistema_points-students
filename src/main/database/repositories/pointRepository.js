@@ -69,7 +69,7 @@ class PointRepository {
     try {
       const dbInstance = this.getDbInstance();
       let query = `
-        SELECT 
+        SELECT
           p.*,
           pt.name as participation_type_name,
           u.full_name as teacher_name
@@ -80,8 +80,15 @@ class PointRepository {
         ORDER BY p.created_at DESC
       `;
 
+      // Validar y sanitizar limit antes de usarlo en la query
+      // Nota: SQL.js no soporta placeholders para LIMIT, por lo que se usa interpolación
+      // pero con validación estricta para prevenir SQL injection
       if (limit) {
-        query += ` LIMIT ${parseInt(limit)}`;
+        const parsedLimit = parseInt(limit, 10);
+        if (!Number.isInteger(parsedLimit) || parsedLimit <= 0) {
+          throw new Error('El parámetro limit debe ser un entero positivo');
+        }
+        query += ` LIMIT ${parsedLimit}`;
       }
 
       const result = dbInstance.getDb().exec(query, [studentId]);
@@ -93,6 +100,29 @@ class PointRepository {
       return this._rowsToObjects(result[0]);
     } catch (error) {
       console.error("Error en PointRepository.findByStudent:", error);
+      throw error;
+    }
+  }
+
+  // Contar puntos asignados a un estudiante
+  countByStudent(studentId) {
+    try {
+      const dbInstance = this.getDbInstance();
+      const query = `
+        SELECT COUNT(*) as count
+        FROM points
+        WHERE student_id = ?
+      `;
+
+      const result = dbInstance.getDb().exec(query, [studentId]);
+
+      if (!result.length || !result[0].values.length) {
+        return 0;
+      }
+
+      return result[0].values[0][0];
+    } catch (error) {
+      console.error("Error en PointRepository.countByStudent:", error);
       throw error;
     }
   }

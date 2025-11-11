@@ -8,7 +8,7 @@ import EmptyState from '../../components/atoms/emptyState';
 import Select from '../../components/atoms/select';
 import Label from '../../components/atoms/label';
 import StudentForm from '../../components/organisms/studentForm';
-import { studentService, courseService } from '../../services';
+import { studentService, courseService, excelService } from '../../services';
 import { useAuth } from '../../context/authContext';
 import './students.css';
 
@@ -23,6 +23,9 @@ const StudentsPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState(null);
+  const [showImportModal, setShowImportModal] = useState(false);
 
   useEffect(() => {
     loadCourses();
@@ -127,6 +130,81 @@ const StudentsPage = () => {
     setSelectedStudent(null);
   };
 
+  const handleExportStudents = async () => {
+    if (!selectedCourseId) {
+      alert('Selecciona un curso primero');
+      return;
+    }
+
+    const course = courses.find(c => c.id === parseInt(selectedCourseId));
+    if (!course) return;
+
+    setLoading(true);
+    try {
+      const result = await excelService.exportStudents(course.id, course.name);
+
+      if (result.success) {
+        alert(`Exportación exitosa!\n\nArchivo: ${result.fileName}\nEstudiantes: ${result.studentsCount}\n\nEl archivo se abrió en tu carpeta de Descargas.`);
+      } else {
+        alert(`Error: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Error al exportar estudiantes');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleImportStudents = async () => {
+    if (!selectedCourseId) {
+      alert('Selecciona un curso primero');
+      return;
+    }
+
+    setImporting(true);
+    try {
+      const result = await excelService.importStudents(parseInt(selectedCourseId));
+
+      if (result.canceled) {
+        setImporting(false);
+        return;
+      }
+
+      if (result.success) {
+        setImportResult(result);
+        setShowImportModal(true);
+
+        // Recargar estudiantes
+        if (result.imported && result.imported.length > 0) {
+          loadStudents(selectedCourseId);
+        }
+      } else {
+        alert(`Error: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Error al importar estudiantes');
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const handleDownloadTemplate = async () => {
+    try {
+      const result = await excelService.downloadTemplate();
+
+      if (result.success) {
+        alert(`Plantilla descargada!\n\nArchivo: ${result.fileName}\n\nSe abrió en tu carpeta de Descargas.`);
+      } else {
+        alert(`Error: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Error al descargar plantilla');
+    }
+  };
+
   const filteredStudents = students.filter(student =>
     student.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (student.student_code && student.student_code.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -178,19 +256,47 @@ const StudentsPage = () => {
                   className="students-page__search-input"
                 />
               </div>
-              <Button
-                variant="primary"
-                size="medium"
-                onClick={handleCreateStudent}
-                icon={
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <line x1="12" y1="5" x2="12" y2="19"/>
-                    <line x1="5" y1="12" x2="19" y2="12"/>
-                  </svg>
-                }
-              >
-                Agregar Estudiante
-              </Button>
+              <div className="students-page__actions">
+                <Button
+                  variant="outline"
+                  size="medium"
+                  onClick={handleDownloadTemplate}
+                  title="Descargar plantilla Excel"
+                >
+                  📥 Plantilla
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="medium"
+                  onClick={handleImportStudents}
+                  loading={importing}
+                  title="Importar desde Excel"
+                >
+                  📤 Importar
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="medium"
+                  onClick={handleExportStudents}
+                  loading={loading}
+                  title="Exportar a Excel"
+                >
+                  📊 Exportar
+                </Button>
+                <Button
+                  variant="primary"
+                  size="medium"
+                  onClick={handleCreateStudent}
+                  icon={
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <line x1="12" y1="5" x2="12" y2="19"/>
+                      <line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                  }
+                >
+                  Agregar Estudiante
+                </Button>
+              </div>
             </>
           )}
         </div>
@@ -355,6 +461,97 @@ const StudentsPage = () => {
             onCancel={handleCloseModal}
           />
         </Modal>
+
+        {/* Modal de resultados de importación */}
+        {showImportModal && importResult && (
+          <Modal
+            isOpen={showImportModal}
+            onClose={() => {
+              setShowImportModal(false);
+              setImportResult(null);
+            }}
+            title="Resultado de Importación"
+            size="large"
+          >
+            <div className="import-result">
+              <div className="import-result__summary">
+                <div className="import-result__stat import-result__stat--success">
+                  <h3>{importResult.imported?.length || 0}</h3>
+                  <p>Importados</p>
+                </div>
+                <div className="import-result__stat import-result__stat--warning">
+                  <h3>{importResult.duplicates?.length || 0}</h3>
+                  <p>Duplicados</p>
+                </div>
+                <div className="import-result__stat import-result__stat--error">
+                  <h3>{importResult.errors?.length || 0}</h3>
+                  <p>Errores</p>
+                </div>
+              </div>
+
+              {importResult.imported && importResult.imported.length > 0 && (
+                <div className="import-result__section">
+                  <h4>✅ Estudiantes Importados ({importResult.imported.length})</h4>
+                  <ul>
+                    {importResult.imported.slice(0, 10).map(item => (
+                      <li key={item.row}>
+                        Fila {item.row}: {item.data.fullName}
+                      </li>
+                    ))}
+                    {importResult.imported.length > 10 && (
+                      <li>... y {importResult.imported.length - 10} más</li>
+                    )}
+                  </ul>
+                </div>
+              )}
+
+              {importResult.duplicates && importResult.duplicates.length > 0 && (
+                <div className="import-result__section import-result__section--warning">
+                  <h4>⚠️ Duplicados ({importResult.duplicates.length})</h4>
+                  <ul>
+                    {importResult.duplicates.slice(0, 5).map((item, idx) => (
+                      <li key={idx}>
+                        Fila {item.row}: {item.data.fullName} - {item.reason}
+                      </li>
+                    ))}
+                    {importResult.duplicates.length > 5 && (
+                      <li>... y {importResult.duplicates.length - 5} más</li>
+                    )}
+                  </ul>
+                </div>
+              )}
+
+              {importResult.errors && importResult.errors.length > 0 && (
+                <div className="import-result__section import-result__section--error">
+                  <h4>❌ Errores ({importResult.errors.length})</h4>
+                  <ul>
+                    {importResult.errors.slice(0, 5).map((item, idx) => (
+                      <li key={idx}>
+                        Fila {item.row}: {item.error}
+                      </li>
+                    ))}
+                    {importResult.errors.length > 5 && (
+                      <li>... y {importResult.errors.length - 5} más</li>
+                    )}
+                  </ul>
+                </div>
+              )}
+
+              <div className="import-result__actions">
+                <Button
+                  variant="primary"
+                  size="medium"
+                  onClick={() => {
+                    setShowImportModal(false);
+                    setImportResult(null);
+                  }}
+                >
+                  Cerrar
+                </Button>
+              </div>
+            </div>
+          </Modal>
+        )}
       </div>
     </DashboardLayout>
   );

@@ -4,7 +4,7 @@ import Button from '../../atoms/button';
 import FormField from '../../molecules/formField';
 import Select from '../../atoms/select';
 import Label from '../../atoms/label';
-import { participationTypeService } from '../../../services';
+import { participationTypeService, pointService } from '../../../services';
 import './pointForm.css';
 
 const PointForm = ({ point = null, studentId, studentName, onSuccess, onCancel }) => {
@@ -14,7 +14,7 @@ const PointForm = ({ point = null, studentId, studentName, onSuccess, onCancel }
     participationTypeId: '',
     pointsValue: '',
     reason: '',
-    customTypeName: '' // Nuevo: nombre personalizado cuando se selecciona "Otros"
+    customTypeName: '' //nombre personalizado cuando se selecciona "Otros"
   });
 
   const [participationTypes, setParticipationTypes] = useState([]);
@@ -22,7 +22,7 @@ const PointForm = ({ point = null, studentId, studentName, onSuccess, onCancel }
   const [loading, setLoading] = useState(false);
   const [loadingTypes, setLoadingTypes] = useState(true);
   const [generalError, setGeneralError] = useState('');
-  const [showCustomInput, setShowCustomInput] = useState(false); // Nuevo: controlar visibilidad del input
+  const [showCustomInput, setShowCustomInput] = useState(false); //controlar visibilidad del input
 
   useEffect(() => {
     loadParticipationTypes();
@@ -149,10 +149,6 @@ const PointForm = ({ point = null, studentId, studentName, onSuccess, onCancel }
     setGeneralError('');
 
     try {
-      // Importar el servicio aquí para evitar circular dependencies
-      const { pointService } = await import('../../../services');
-      const { participationTypeService } = await import('../../../services');
-
       let finalParticipationTypeId = formData.participationTypeId;
 
       // Si seleccionó "Otros", crear el tipo de participación personalizado primero

@@ -1,31 +1,45 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '../../components/templates/dashboardLayout/dashboardLayout';
 import Card from '../../components/atoms/card';
 import { useAuth } from '../../context/authContext';
+import { dashboardService } from '../../services';
 import './dashboard.css';
 
 const DashboardPage = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [stats, setStats] = useState({
     totalCourses: 0,
     totalStudents: 0,
     totalPoints: 0,
-    totalParticipationTypes: 7
+    totalParticipationTypes: 0
   });
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // TODO: Cargar estadísticas reales desde la base de datos
     loadStats();
-  }, []);
+  }, [user]);
 
   const loadStats = async () => {
-    // Por ahora dejamos valores por defecto
-    setStats({
-      totalCourses: 0,
-      totalStudents: 0,
-      totalPoints: 0,
-      totalParticipationTypes: 7
-    });
+    if (!user || !user.id) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const result = await dashboardService.getDashboardStats(user.id);
+
+      if (result.success && result.stats) {
+        setStats(result.stats);
+      } else {
+        console.error('Error al cargar estadísticas:', result.error);
+      }
+    } catch (error) {
+      console.error('Error al cargar estadísticas:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const statCards = [
@@ -100,7 +114,7 @@ const DashboardPage = () => {
           <line x1="5" y1="12" x2="19" y2="12"/>
         </svg>
       ),
-      action: () => console.log('Crear curso')
+      action: () => navigate('/dashboard/courses')
     },
     {
       id: 'add-student',
@@ -114,7 +128,7 @@ const DashboardPage = () => {
           <line x1="23" y1="11" x2="17" y2="11"/>
         </svg>
       ),
-      action: () => console.log('Agregar estudiante')
+      action: () => navigate('/dashboard/courses')
     },
     {
       id: 'assign-points',
@@ -126,7 +140,7 @@ const DashboardPage = () => {
           <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
         </svg>
       ),
-      action: () => console.log('Asignar puntos')
+      action: () => navigate('/dashboard/courses')
     }
   ];
 
@@ -154,7 +168,9 @@ const DashboardPage = () => {
               </div>
               <div className="dashboard-page__stat-content">
                 <span className="dashboard-page__stat-label">{stat.title}</span>
-                <span className="dashboard-page__stat-value">{stat.value}</span>
+                <span className="dashboard-page__stat-value">
+                  {loading ? '...' : stat.value}
+                </span>
                 <span className="dashboard-page__stat-description">{stat.description}</span>
               </div>
             </Card>

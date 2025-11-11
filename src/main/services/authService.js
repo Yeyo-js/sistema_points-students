@@ -5,9 +5,13 @@ const Validators = require('../../shared/utils/validators');
 const ErrorHandler = require('../../shared/utils/errorHandler');
 const rateLimiter = require('../../shared/utils/rateLimiter');
 
-// Clave secreta para JWT (en producción debería estar en variables de entorno)
-const JWT_SECRET = process.env.JWT_SECRET || 'tu-clave-secreta-super-segura-2024-change-in-production';
-const JWT_EXPIRES_IN = '7d'; // Token válido por 7 días
+// Validar que JWT_SECRET esté configurado
+if (!process.env.JWT_SECRET) {
+  throw new Error('JWT_SECRET no está configurado en las variables de entorno. Por favor, configura el archivo .env');
+}
+
+const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d'; // Token válido por 7 días (o según .env)
 
 class AuthService {
   // Registrar nuevo usuario

@@ -1,5 +1,6 @@
 const studentRepository = require('../database/repositories/studentRepository');
 const courseRepository = require('../database/repositories/courseRepository');
+const pointRepository = require('../database/repositories/pointRepository');
 const Validators = require('../../shared/utils/validators');
 const ErrorHandler = require('../../shared/utils/errorHandler');
 
@@ -222,18 +223,54 @@ class StudentService {
         return ErrorHandler.handleNotFoundError('Estudiante');
       }
 
-      // TODO: Verificar si tiene puntos asignados y advertir al usuario
-      // Por ahora permitimos eliminarlo (los puntos se eliminarán por CASCADE)
+      // Verificar si tiene puntos asignados
+      const pointsCount = pointRepository.countByStudent(studentId);
+
+      if (pointsCount > 0) {
+        // Retornar información para que el frontend muestre confirmación
+        return {
+          success: false,
+          requiresConfirmation: true,
+          pointsCount: pointsCount,
+          message: `El estudiante tiene ${pointsCount} punto(s) asignado(s). Si continúas, se eliminarán todos los puntos asociados. ¿Estás seguro?`,
+          studentId: studentId
+        };
+      }
 
       studentRepository.delete(studentId);
 
-      return { 
+      return {
         success: true,
         message: 'Estudiante eliminado exitosamente'
       };
 
     } catch (error) {
       ErrorHandler.logCriticalError(error, { action: 'deleteStudent', studentId });
+      return ErrorHandler.handleDatabaseError(error);
+    }
+  }
+
+  // Forzar eliminación de estudiante (después de confirmación)
+  async forceDeleteStudent(studentId) {
+    try {
+      if (!Validators.isPositiveInteger(studentId)) {
+        return ErrorHandler.handleValidationError('studentId', 'ID de estudiante inválido');
+      }
+
+      const student = studentRepository.findById(studentId);
+      if (!student) {
+        return ErrorHandler.handleNotFoundError('Estudiante');
+      }
+
+      studentRepository.delete(studentId);
+
+      return {
+        success: true,
+        message: 'Estudiante eliminado exitosamente'
+      };
+
+    } catch (error) {
+      ErrorHandler.logCriticalError(error, { action: 'forceDeleteStudent', studentId });
       return ErrorHandler.handleDatabaseError(error);
     }
   }

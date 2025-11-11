@@ -1,3 +1,6 @@
+// Cargar variables de entorno
+require('dotenv').config();
+
 const { app, BrowserWindow } = require('electron');
 const path = require('path');
 const isDev = require('electron-is-dev');
@@ -44,22 +47,21 @@ async function createWindow() {
 app.on('ready', async () => {
   try {
     console.log('🚀 Inicializando aplicación...');
-    
-    // Primero inicializar la base de datos
-    const DatabaseSchema = require('./database/schema');
-    const dbInstance = new DatabaseSchema();
-    await dbInstance.initDatabase();
-    
+
+    // Primero inicializar la base de datos usando el módulo correcto
+    const { getDatabase } = require('./database');
+    await getDatabase();
+
     console.log('✅ Base de datos inicializada');
-    
+
     // Luego registrar handlers IPC
     registerAllHandlers();
-    
+
     console.log('✅ Handlers IPC registrados');
-    
+
     // Finalmente crear ventana
     await createWindow();
-    
+
     console.log('✅ Aplicación lista');
   } catch (error) {
     console.error('❌ Error al inicializar aplicación:', error);

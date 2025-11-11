@@ -1,0 +1,186 @@
+.participation-types-page {
+  padding: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* Header */
+.participation-types-page__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  gap: 1rem;
+}
+
+.participation-types-page__title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 0.5rem 0;
+}
+
+.participation-types-page__subtitle {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+/* Loading & Empty States */
+.participation-types-page__loading {
+  text-align: center;
+  color: var(--text-secondary);
+  padding: 2rem;
+  font-size: 1rem;
+}
+
+.participation-types-page__empty {
+  text-align: center;
+  padding: 3rem 2rem;
+}
+
+.participation-types-page__empty svg {
+  color: var(--text-tertiary);
+  margin-bottom: 1.5rem;
+}
+
+.participation-types-page__empty h3 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 0.5rem 0;
+}
+
+.participation-types-page__empty p {
+  color: var(--text-secondary);
+  margin: 0 0 1.5rem 0;
+  max-width: 400px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Grid */
+.participation-types-page__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+/* Card */
+.participation-type-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.participation-type-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.participation-type-card__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.participation-type-card__icon {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: var(--primary-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary);
+}
+
+.participation-type-card__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.participation-type-card__name {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 0.25rem 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.participation-type-card__points {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--primary);
+  margin: 0;
+}
+
+.participation-type-card__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.participation-type-card__badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.participation-type-card__badge--predefined {
+  background: var(--info-light);
+  color: var(--info);
+}
+
+.participation-type-card__badge--custom {
+  background: var(--success-light);
+  color: var(--success);
+}
+
+.participation-type-card__date {
+  font-size: 0.875rem;
+  color: var(--text-tertiary);
+}
+
+.participation-type-card__actions {
+  display: flex;
+  gap: 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.participation-type-card__actions button {
+  flex: 1;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .participation-types-page {
+    padding: 1rem;
+  }
+
+  .participation-types-page__header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .participation-types-page__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .participation-types-page__title {
+    font-size: 1.5rem;
+  }
+}

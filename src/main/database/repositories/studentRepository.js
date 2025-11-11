@@ -168,6 +168,54 @@ class StudentRepository {
     return obj;
   }
 
+  // Buscar estudiante por código en un curso
+  findByStudentCode(courseId, studentCode) {
+    try {
+      const dbInstance = this.getDbInstance();
+      const query = `
+        SELECT * FROM students
+        WHERE course_id = ? AND student_code = ?
+        LIMIT 1
+      `;
+
+      const result = dbInstance.getDb().exec(query, [courseId, studentCode]);
+
+      if (!result.length || !result[0].values.length) {
+        return null;
+      }
+
+      const rows = this._rowsToObjects(result[0]);
+      return rows[0] || null;
+    } catch (error) {
+      console.error('Error en StudentRepository.findByStudentCode:', error);
+      throw error;
+    }
+  }
+
+  // Buscar estudiante por número de lista en un curso
+  findByListNumber(courseId, listNumber) {
+    try {
+      const dbInstance = this.getDbInstance();
+      const query = `
+        SELECT * FROM students
+        WHERE course_id = ? AND list_number = ?
+        LIMIT 1
+      `;
+
+      const result = dbInstance.getDb().exec(query, [courseId, listNumber]);
+
+      if (!result.length || !result[0].values.length) {
+        return null;
+      }
+
+      const rows = this._rowsToObjects(result[0]);
+      return rows[0] || null;
+    } catch (error) {
+      console.error('Error en StudentRepository.findByListNumber:', error);
+      throw error;
+    }
+  }
+
   _rowsToObjects(result) {
     if (!result.values || !result.values.length) {
       return [];

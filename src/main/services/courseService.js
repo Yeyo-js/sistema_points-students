@@ -1,12 +1,8 @@
 const courseRepository = require('../database/repositories/courseRepository');
 const Validators = require('../../shared/utils/validators');
 const ErrorHandler = require('../../shared/utils/errorHandler');
-const { getDatabase } = require('../database');
 
 class CourseService {
-  constructor() {
-    this.db = getDatabase();
-  }
 
   // Crear curso
   createCourse(userId, name, level, academicPeriod) {

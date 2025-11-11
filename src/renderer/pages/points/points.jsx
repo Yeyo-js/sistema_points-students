@@ -8,7 +8,7 @@ import Select from '../../components/atoms/select';
 import Label from '../../components/atoms/label';
 import PointForm from '../../components/organisms/pointForm';
 import BulkPointForm from '../../components/organisms/bulkPointForm';
-import { studentService, courseService, pointService } from '../../services';
+import { studentService, courseService, pointService, excelService } from '../../services';
 import { useAuth } from '../../context/authContext';
 import './points.css';
 
@@ -218,6 +218,32 @@ const PointsPage = () => {
     setIsBulkModalOpen(false);
   };
 
+  const handleExportPoints = async () => {
+    if (!selectedCourseId) {
+      alert('Selecciona un curso primero');
+      return;
+    }
+
+    const course = courses.find(c => c.id === parseInt(selectedCourseId));
+    if (!course) return;
+
+    setLoading(true);
+    try {
+      const result = await excelService.exportPoints(course.id, course.name);
+
+      if (result.success) {
+        alert(`Exportación exitosa!\n\nArchivo: ${result.fileName}\nPuntos: ${result.pointsCount}\n\nEl archivo se abrió en tu carpeta de Descargas.`);
+      } else {
+        alert(`Error: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Error al exportar puntos');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const selectedCourse = courses.find(c => c.id === selectedCourseId);
   const selectedStudent = students.find(s => s.id === parseInt(selectedStudentId));
 
@@ -286,19 +312,30 @@ const PointsPage = () => {
                   }
                 />
               </div>
-              <Button
-                variant="primary"
-                size="medium"
-                onClick={handleAssignPoints}
-                icon={
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <line x1="12" y1="5" x2="12" y2="19"/>
-                    <line x1="5" y1="12" x2="19" y2="12"/>
-                  </svg>
-                }
-              >
-                {selectedStudentId ? 'Asignar Puntos' : 'Asignar a Todos'}
-              </Button>
+              <div className="points-page__actions">
+                <Button
+                  variant="secondary"
+                  size="medium"
+                  onClick={handleExportPoints}
+                  loading={loading}
+                  title="Exportar a Excel"
+                >
+                  📊 Exportar
+                </Button>
+                <Button
+                  variant="primary"
+                  size="medium"
+                  onClick={handleAssignPoints}
+                  icon={
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <line x1="12" y1="5" x2="12" y2="19"/>
+                      <line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                  }
+                >
+                  {selectedStudentId ? 'Asignar Puntos' : 'Asignar a Todos'}
+                </Button>
+              </div>
             </>
           )}
         </div>

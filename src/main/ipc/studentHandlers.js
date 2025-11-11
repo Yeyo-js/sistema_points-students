@@ -65,6 +65,16 @@ function registerStudentHandlers() {
     }
   });
 
+  // Forzar eliminación de estudiante (después de confirmación)
+  ipcMain.handle('student:forceDelete', async (event, { studentId }) => {
+    try {
+      return await studentService.forceDeleteStudent(studentId);
+    } catch (error) {
+      console.error('Error en IPC student:forceDelete:', error);
+      return { success: false, error: 'Error al eliminar estudiante' };
+    }
+  });
+
   console.log('✅ Student handlers registrados');
 }
 

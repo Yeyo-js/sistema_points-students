@@ -136,6 +136,36 @@ class DatabaseSchema {
         );
       `);
 
+      // Tabla de grupos
+      this.db.run(`
+        CREATE TABLE IF NOT EXISTS groups (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          course_id INTEGER,
+          type TEXT NOT NULL CHECK(type IN ('general', 'subgroup', 'independent')),
+          parent_group_id INTEGER,
+          created_by INTEGER NOT NULL,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE,
+          FOREIGN KEY (parent_group_id) REFERENCES groups(id) ON DELETE CASCADE,
+          FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE
+        );
+      `);
+
+      // Tabla de estudiantes en grupos
+      this.db.run(`
+        CREATE TABLE IF NOT EXISTS group_students (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          group_id INTEGER NOT NULL,
+          student_id INTEGER NOT NULL,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE,
+          FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
+          UNIQUE(group_id, student_id)
+        );
+      `);
+
       // Índices para mejorar performance
       this.db.run(
         "CREATE INDEX IF NOT EXISTS idx_courses_user ON courses(user_id);"
@@ -148,6 +178,21 @@ class DatabaseSchema {
       );
       this.db.run(
         "CREATE INDEX IF NOT EXISTS idx_points_created ON points(created_at);"
+      );
+      this.db.run(
+        "CREATE INDEX IF NOT EXISTS idx_groups_course ON groups(course_id);"
+      );
+      this.db.run(
+        "CREATE INDEX IF NOT EXISTS idx_groups_created_by ON groups(created_by);"
+      );
+      this.db.run(
+        "CREATE INDEX IF NOT EXISTS idx_groups_parent ON groups(parent_group_id);"
+      );
+      this.db.run(
+        "CREATE INDEX IF NOT EXISTS idx_group_students_group ON group_students(group_id);"
+      );
+      this.db.run(
+        "CREATE INDEX IF NOT EXISTS idx_group_students_student ON group_students(student_id);"
       );
 
       console.log("✅ Tablas e índices creados correctamente");
