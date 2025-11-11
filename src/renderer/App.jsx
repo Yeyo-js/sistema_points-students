@@ -8,7 +8,10 @@ import CoursesPage from './pages/courses/courses';
 import GroupsPage from './pages/groups/groups';
 import StudentsPage from './pages/students/students';
 import PointsPage from './pages/points/points';
+<<<<<<< HEAD
 import ParticipationTypesPage from './pages/participationTypes/participationTypes';
+=======
+>>>>>>> d482281f9627b54c9bfafe1dfe88ce4b95cc1304
 
 // Componente de loading
 const LoadingScreen = () => (
@@ -114,6 +117,7 @@ const AppRoutes = () => {
         }
       />
 
+<<<<<<< HEAD
       <Route
         path="/dashboard/groups"
         element={
@@ -125,6 +129,10 @@ const AppRoutes = () => {
 
       <Route
         path="/dashboard/students"
+=======
+      <Route 
+        path="/dashboard/students" 
+>>>>>>> d482281f9627b54c9bfafe1dfe88ce4b95cc1304
         element={
           <PrivateRoute>
             <StudentsPage />
@@ -150,6 +158,16 @@ const AppRoutes = () => {
             <ParticipationTypesPage />
           </PrivateRoute>
         }
+      />
+
+      {/* RUTA DE PUNTOS */}
+      <Route 
+        path="/dashboard/points" 
+        element={
+          <PrivateRoute>
+            <PointsPage />
+          </PrivateRoute>
+        } 
       />
 
       {/* Ruta 404 */}

@@ -22,12 +22,15 @@
   max-width: 400px;
 }
 
+<<<<<<< HEAD
 .points-page__actions {
   display: flex;
   gap: 0.75rem;
   flex-wrap: wrap;
 }
 
+=======
+>>>>>>> d482281f9627b54c9bfafe1dfe88ce4b95cc1304
 /* Info Card */
 .points-page__info-card {
   background: linear-gradient(
