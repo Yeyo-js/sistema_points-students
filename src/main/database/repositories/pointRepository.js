@@ -109,7 +109,7 @@ class PointRepository {
     try {
       const dbInstance = this.getDbInstance();
       const query = `
-        SELECT COUNT(*) as count
+        SELECT COALESCE(SUM(points_value), 0) as total_points
         FROM points
         WHERE student_id = ?
       `;
@@ -119,8 +119,9 @@ class PointRepository {
       if (!result.length || !result[0].values.length) {
         return 0;
       }
-
-      return result[0].values[0][0];
+      
+      // Retorna la suma total de puntos (índice 0 de la primera fila)
+      return result[0].values[0][0]; 
     } catch (error) {
       console.error("Error en PointRepository.countByStudent:", error);
       throw error;
@@ -192,16 +193,21 @@ class PointRepository {
   }
 
   // UPDATE
-  update(pointId, participationTypeId, pointsValue, reason) {
+  update(participationTypeId, pointsValue, reason, pointId) {
     try {
       const dbInstance = this.getDbInstance();
+      const db = dbInstance.getDb(); // <-- Obtener el objeto de BD directo
 
-      dbInstance.run(
+      // Ejecutar la actualización en la base de datos
+      db.run(
         `UPDATE points 
         SET participation_type_id = ?, points_value = ?, reason = ?
         WHERE id = ?`,
-        [participationTypeId, pointsValue, reason, pointId]
+        [participationTypeId, pointsValue, reason, pointId] 
       );
+      
+      // CORRECCIÓN CRÍTICA: Guardar explícitamente en el disco
+      dbInstance.saveDatabase();
 
       return { changes: 1 };
     } catch (error) {
@@ -214,8 +220,12 @@ class PointRepository {
   delete(pointId) {
     try {
       const dbInstance = this.getDbInstance();
+      const db = dbInstance.getDb(); // <-- Obtener el objeto de BD directo
 
-      dbInstance.run("DELETE FROM points WHERE id = ?", [pointId]);
+      db.run("DELETE FROM points WHERE id = ?", [pointId]);
+      
+      // CORRECCIÓN CRÍTICA: Guardar explícitamente en el disco
+      dbInstance.saveDatabase();
 
       return { changes: 1 };
     } catch (error) {
@@ -263,20 +273,19 @@ class PointRepository {
       const roundedAverage = Math.round(totals.average_points);
 
       const dbInstance = this.getDbInstance();
+      const db = dbInstance.getDb(); // <-- Obtener el objeto de BD directo
 
       // Verificar si ya existe un registro
-      const exists = dbInstance
-        .getDb()
-        .exec(
-          "SELECT COUNT(*) as count FROM student_totals WHERE student_id = ?",
-          [studentId]
-        );
+      const exists = db.exec(
+        "SELECT COUNT(*) as count FROM student_totals WHERE student_id = ?",
+        [studentId]
+      );
 
       const count = exists[0].values[0][0];
 
       if (count > 0) {
         // Actualizar
-        dbInstance.run(
+        db.run(
           `UPDATE student_totals 
           SET 
             total_points = ?,
@@ -295,14 +304,12 @@ class PointRepository {
         );
       } else {
         // Insertar (obtener course_id del estudiante)
-        const studentResult = dbInstance
-          .getDb()
-          .exec("SELECT course_id FROM students WHERE id = ?", [studentId]);
+        const studentResult = db.exec("SELECT course_id FROM students WHERE id = ?", [studentId]);
 
         if (studentResult.length && studentResult[0].values.length) {
           const courseId = studentResult[0].values[0][0];
 
-          dbInstance.run(
+          db.run(
             `INSERT INTO student_totals 
             (student_id, course_id, total_points, participation_count, average_points, rounded_average) 
             VALUES (?, ?, ?, ?, ?, ?)`,
@@ -318,6 +325,9 @@ class PointRepository {
         }
       }
 
+      // CORRECCIÓN FINAL: Guardar los cambios realizados en el disco
+      dbInstance.saveDatabase(); 
+
       return { changes: 1 };
     } catch (error) {
       console.error("Error en PointRepository.updateStudentTotals:", error);
@@ -326,6 +336,8 @@ class PointRepository {
   }
 
   // Obtener historial agrupado por fecha (para gráficos)
+  // ... (código se mantiene)
+
   getPointsHistory(studentId) {
     try {
       const dbInstance = this.getDbInstance();

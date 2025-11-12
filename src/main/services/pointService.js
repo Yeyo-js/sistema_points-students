@@ -242,7 +242,7 @@ class PointService {
       // ========== ACTUALIZAR SIN TRANSACCIÓN ==========
       
       // 1. Actualizar punto
-      pointRepository.update(pointId, participationTypeId, pointsValue, reason);
+      pointRepository.update(pointId, participationTypeId, pointsValue, reason, pointId);
 
       // 2. Recalcular totales del estudiante
       pointRepository.updateStudentTotals(existingPoint.student_id);

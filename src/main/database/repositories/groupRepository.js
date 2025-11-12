@@ -1,30 +1,51 @@
-const { getDatabase } = require('../index');
+const { getDatabaseInstance } = require('../index');
 
 class GroupRepository {
+  constructor() {
+    this.dbInstance = null;
+  }
+
+  getDbInstance() {
+    if (!this.dbInstance) {
+      this.dbInstance = getDatabaseInstance();
+    }
+    return this.dbInstance;
+  }
+
   /**
    * Crear un nuevo grupo
    */
   create(groupData) {
-    const db = getDatabase();
-    const { name, courseId, type, parentGroupId, createdBy } = groupData;
+    try {
+      const dbInstance = this.getDbInstance();
+      const db = dbInstance.getDb(); 
 
-    const query = `
-      INSERT INTO groups (name, course_id, type, parent_group_id, created_by, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-    `;
+      const { name, courseId, type, parentGroupId, createdBy } = groupData;
 
-    db.run(query, [name, courseId || null, type, parentGroupId || null, createdBy]);
+      const query = `
+        INSERT INTO groups (name, course_id, type, parent_group_id, created_by, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+      `;
 
-    // Obtener el ID del grupo recién creado
-    const result = db.exec("SELECT last_insert_rowid() as id");
-    return result[0].values[0][0];
+      db.run(query, [name, courseId || null, type, parentGroupId || null, createdBy]);
+
+      const result = db.exec("SELECT last_insert_rowid() as id");
+      const lastInsertId = result[0].values[0][0];
+      
+      dbInstance.saveDatabase();
+
+      return lastInsertId;
+    } catch (error) {
+      console.error('Error in GroupRepository.create:', error);
+      throw error;
+    }
   }
 
   /**
    * Buscar grupo por ID con sus estudiantes
    */
   findById(id) {
-    const db = getDatabase();
+    const db = this.getDbInstance().getDb(); // <-- Usa la instancia correcta
 
     const query = `
       SELECT
@@ -51,7 +72,7 @@ class GroupRepository {
       group[col] = row[index];
     });
 
-    // Obtener estudiantes del grupo
+    // Obtener estudiantes del grupo (CRÍTICO: Asegura que la lista se adjunta)
     group.students = this.getGroupStudents(id);
 
     return group;
@@ -61,7 +82,7 @@ class GroupRepository {
    * Obtener todos los estudiantes de un grupo
    */
   getGroupStudents(groupId) {
-    const db = getDatabase();
+    const db = this.getDbInstance().getDb(); // <-- Usa la instancia correcta
 
     const query = `
       SELECT
@@ -82,7 +103,9 @@ class GroupRepository {
     }
 
     const columns = result[0].columns;
-    return result[0].values.map(row => {
+    const rows = result[0].values;
+
+    return rows.map(row => {
       const student = {};
       columns.forEach((col, index) => {
         student[col] = row[index];
@@ -95,8 +118,8 @@ class GroupRepository {
    * Obtener todos los grupos de un usuario
    */
   findByUser(userId) {
-    const db = getDatabase();
-
+    const db = this.getDbInstance().getDb();
+    // ... (logic remains the same)
     const query = `
       SELECT
         g.*,
@@ -130,8 +153,8 @@ class GroupRepository {
    * Obtener grupos de un curso específico
    */
   findByCourse(courseId) {
-    const db = getDatabase();
-
+    const db = this.getDbInstance().getDb();
+    // ... (logic remains the same)
     const query = `
       SELECT
         g.*,
@@ -169,7 +192,7 @@ class GroupRepository {
    * Obtener subgrupos de un grupo padre
    */
   findSubgroups(parentGroupId) {
-    const db = getDatabase();
+    const db = this.getDbInstance().getDb();
 
     const query = `
       SELECT
@@ -202,41 +225,60 @@ class GroupRepository {
    * Actualizar información de un grupo
    */
   update(id, groupData) {
-    const db = getDatabase();
-    const { name } = groupData;
-
-    const query = `
-      UPDATE groups
-      SET name = ?, updated_at = datetime('now')
-      WHERE id = ?
-    `;
-
-    db.run(query, [name, id]);
-    return this.findById(id);
+    try {
+      const dbInstance = this.getDbInstance();
+      const db = dbInstance.getDb();
+      const { name } = groupData;
+  
+      const query = `
+        UPDATE groups
+        SET name = ?, updated_at = datetime('now')
+        WHERE id = ?
+      `;
+  
+      db.run(query, [name, id]);
+      
+      dbInstance.saveDatabase();
+  
+      return this.findById(id);
+    } catch (error) {
+      console.error('Error in GroupRepository.update:', error);
+      throw error;
+    }
   }
 
   /**
    * Eliminar un grupo
    */
   delete(id) {
-    const db = getDatabase();
+    try {
+      const dbInstance = this.getDbInstance();
+      const db = dbInstance.getDb();
 
-    // Primero verificar si tiene subgrupos
-    const subgroups = this.findSubgroups(id);
-    if (subgroups.length > 0) {
-      throw new Error('No se puede eliminar un grupo que tiene subgrupos');
+      // Primero verificar si tiene subgrupos
+      const subgroups = this.findSubgroups(id);
+      if (subgroups.length > 0) {
+        throw new Error('No se puede eliminar un grupo que tiene subgrupos');
+      }
+
+      const query = `DELETE FROM groups WHERE id = ?`;
+      db.run(query, [id]);
+      
+      dbInstance.saveDatabase();
+
+      return true;
+    } catch (error) {
+      console.error('Error in GroupRepository.delete:', error);
+      throw error;
     }
-
-    const query = `DELETE FROM groups WHERE id = ?`;
-    db.run(query, [id]);
-    return true;
   }
 
   /**
-   * Agregar estudiante a un grupo
+   * Agregar estudiante a un grupo (Nota: No usado directamente en el servicio, pero mantenido)
    */
   addStudent(groupId, studentId) {
-    const db = getDatabase();
+    const dbInstance = this.getDbInstance();
+    const db = dbInstance.getDb();
 
     const query = `
       INSERT INTO group_students (group_id, student_id, created_at)
@@ -245,9 +287,9 @@ class GroupRepository {
 
     try {
       db.run(query, [groupId, studentId]);
+      dbInstance.saveDatabase(); 
       return true;
     } catch (error) {
-      // Si el estudiante ya está en el grupo, ignorar
       if (error.message.includes('UNIQUE constraint')) {
         return false;
       }
@@ -259,51 +301,47 @@ class GroupRepository {
    * Agregar múltiples estudiantes a un grupo
    */
   addStudents(groupId, studentIds) {
-    const db = getDatabase();
+    const dbInstance = this.getDbInstance();
+    const db = dbInstance.getDb();
     let addedCount = 0;
 
-    studentIds.forEach(studentId => {
-      try {
+    // Usar transacción para rendimiento y atomicidad
+    db.run('BEGIN TRANSACTION');
+    try {
+      studentIds.forEach(studentId => {
         const query = `
           INSERT INTO group_students (group_id, student_id, created_at)
           VALUES (?, ?, datetime('now'))
         `;
-        db.run(query, [groupId, studentId]);
+        db.exec(query, [groupId, studentId]); 
         addedCount++;
-      } catch (error) {
-        // Si el estudiante ya está, continuar con el siguiente
-        if (!error.message.includes('UNIQUE constraint')) {
-          throw error;
-        }
+      });
+      db.run('COMMIT');
+      
+      dbInstance.saveDatabase();
+      
+    } catch (error) {
+      db.run('ROLLBACK');
+      console.error('Error in GroupRepository.addStudents:', error);
+      if (!error.message.includes('UNIQUE constraint')) {
+        throw error;
       }
-    });
-
+    }
     return addedCount;
-  }
-
-  /**
-   * Remover estudiante de un grupo
-   */
-  removeStudent(groupId, studentId) {
-    const db = getDatabase();
-
-    const query = `
-      DELETE FROM group_students
-      WHERE group_id = ? AND student_id = ?
-    `;
-
-    db.run(query, [groupId, studentId]);
-    return true;
   }
 
   /**
    * Remover todos los estudiantes de un grupo
    */
   removeAllStudents(groupId) {
-    const db = getDatabase();
+    const dbInstance = this.getDbInstance();
+    const db = dbInstance.getDb();
 
     const query = `DELETE FROM group_students WHERE group_id = ?`;
     db.run(query, [groupId]);
+    
+    dbInstance.saveDatabase();
+    
     return true;
   }
 
@@ -311,10 +349,8 @@ class GroupRepository {
    * Reemplazar estudiantes de un grupo (útil para editar)
    */
   replaceStudents(groupId, studentIds) {
-    // Primero remover todos
     this.removeAllStudents(groupId);
 
-    // Luego agregar los nuevos
     if (studentIds && studentIds.length > 0) {
       return this.addStudents(groupId, studentIds);
     }
@@ -326,7 +362,7 @@ class GroupRepository {
    * Verificar si un estudiante está en un grupo
    */
   hasStudent(groupId, studentId) {
-    const db = getDatabase();
+    const db = this.getDbInstance().getDb();
 
     const query = `
       SELECT COUNT(*) as count
@@ -342,7 +378,7 @@ class GroupRepository {
    * Contar estudiantes en un grupo
    */
   countStudents(groupId) {
-    const db = getDatabase();
+    const db = this.getDbInstance().getDb();
 
     const query = `
       SELECT COUNT(*) as count
@@ -352,6 +388,37 @@ class GroupRepository {
 
     const result = db.exec(query, [groupId]);
     return result[0].values[0][0];
+  }
+  /**
+   * Obtener IDs de estudiantes ya asignados a otros subgrupos de un grupo padre
+   * @param {number} parentGroupId
+   * @param {number} excludeSubgroupId - ID del subgrupo actual (para edición)
+   * @returns {number[]} Lista de IDs de estudiantes excluidos
+   */
+  getStudentsInSubgroups(parentGroupId, excludeSubgroupId = null) {
+    const db = this.getDbInstance().getDb();
+
+    let query = `
+      SELECT DISTINCT gs.student_id
+      FROM group_students gs
+      JOIN groups g ON gs.group_id = g.id
+      WHERE g.parent_group_id = ?
+    `;
+    let params = [parentGroupId];
+
+    if (excludeSubgroupId) {
+      query += ` AND g.id != ?`;
+      params.push(excludeSubgroupId);
+    }
+
+    const result = db.exec(query, params);
+
+    if (!result[0] || result[0].values.length === 0) {
+      return [];
+    }
+
+    // Retorna solo la primera columna (student_id) como un array de números
+    return result[0].values.map(row => row[0]);
   }
 }
 

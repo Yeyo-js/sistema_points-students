@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import Button from '../../atoms/button';
-import Input from '../../atoms/input';
-import Label from '../../atoms/label';
+import FormField from '../../molecules/formField'; // Importar FormField
 import { groupService } from '../../../services';
 import './manualGroupForm.css';
 
@@ -14,6 +13,8 @@ const ManualGroupForm = ({ userId, onSuccess, onCancel }) => {
     { fullName: '', studentCode: '', listNumber: 1 }
   ]);
   const [loading, setLoading] = useState(false);
+  const [generalError, setGeneralError] = useState('');
+  const [errors, setErrors] = useState({});
 
   const handleAddStudent = () => {
     setStudents([
@@ -24,7 +25,7 @@ const ManualGroupForm = ({ userId, onSuccess, onCancel }) => {
 
   const handleRemoveStudent = (index) => {
     if (students.length === 1) {
-      alert('Debe haber al menos un estudiante');
+      setGeneralError('Debe haber al menos un estudiante.');
       return;
     }
     const newStudents = students.filter((_, i) => i !== index);
@@ -33,42 +34,68 @@ const ManualGroupForm = ({ userId, onSuccess, onCancel }) => {
       student.listNumber = i + 1;
     });
     setStudents(newStudents);
+    setGeneralError(''); // Limpiar error si se elimina un estudiante
   };
 
   const handleStudentChange = (index, field, value) => {
     const newStudents = [...students];
     newStudents[index][field] = value;
     setStudents(newStudents);
+    // Limpiar errores específicos de estudiantes si se edita
+    if (errors[`student-${index}-${field}`]) {
+      setErrors(prev => ({ ...prev, [`student-${index}-${field}`]: '' }));
+    }
+    setGeneralError(''); // Limpiar error general si se edita
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+    let isValid = true;
+
+    if (!groupName.trim()) {
+      newErrors.groupName = 'El nombre del grupo es requerido.';
+      isValid = false;
+    }
+
+    if (!courseName.trim()) {
+      newErrors.courseName = 'El nombre del curso es requerido.';
+      isValid = false;
+    }
+
+    if (!level.trim()) {
+      newErrors.level = 'El nivel es requerido.';
+      isValid = false;
+    }
+
+    if (!academicPeriod.trim()) {
+      newErrors.academicPeriod = 'El período académico es requerido.';
+      isValid = false;
+    }
+
+    const validStudents = students.filter(s => s.fullName.trim());
+    if (validStudents.length === 0) {
+      setGeneralError('Debes agregar al menos un estudiante con nombre.');
+      isValid = false;
+    } else {
+      // Validar que no haya estudiantes con nombre vacío si hay más de uno
+      students.forEach((student, index) => {
+        if (!student.fullName.trim() && students.length > 1) {
+          newErrors[`student-${index}-fullName`] = 'El nombre del estudiante no puede estar vacío.';
+          isValid = false;
+        }
+      });
+    }
+
+    setErrors(newErrors);
+    return isValid;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setGeneralError('');
+    setErrors({});
 
-    // Validaciones
-    if (!groupName.trim()) {
-      alert('El nombre del grupo es requerido');
-      return;
-    }
-
-    if (!courseName.trim()) {
-      alert('El nombre del curso es requerido');
-      return;
-    }
-
-    if (!level.trim()) {
-      alert('El nivel es requerido');
-      return;
-    }
-
-    if (!academicPeriod.trim()) {
-      alert('El período académico es requerido');
-      return;
-    }
-
-    // Validar estudiantes
-    const validStudents = students.filter(s => s.fullName.trim());
-    if (validStudents.length === 0) {
-      alert('Debes agregar al menos un estudiante con nombre');
+    if (!validateForm()) {
       return;
     }
 
@@ -80,20 +107,20 @@ const ManualGroupForm = ({ userId, onSuccess, onCancel }) => {
           courseName,
           level,
           academicPeriod,
-          students: validStudents
+          students: students.filter(s => s.fullName.trim()) // Solo enviar estudiantes con nombre
         },
         userId
       );
 
       if (result.success) {
-        alert(`Grupo creado exitosamente!\n\n${result.studentsCreated} estudiantes creados\nCurso: ${result.course.name}`);
+        // Podríamos añadir un mensaje de éxito temporal aquí si fuera necesario
         onSuccess();
       } else {
-        alert(`Error: ${result.error}`);
+        setGeneralError(result.error || 'Error al crear el grupo independiente.');
       }
     } catch (error) {
       console.error('Error al crear grupo:', error);
-      alert('Error al crear grupo independiente');
+      setGeneralError('Error de conexión al crear el grupo. Intenta nuevamente.');
     } finally {
       setLoading(false);
     }
@@ -101,62 +128,73 @@ const ManualGroupForm = ({ userId, onSuccess, onCancel }) => {
 
   return (
     <form className="manual-group-form" onSubmit={handleSubmit}>
+      {generalError && (
+        <div className="manual-group-form__error-banner">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <span>{generalError}</span>
+        </div>
+      )}
+
       <div className="manual-group-form__section">
         <h3 className="manual-group-form__section-title">Información del Grupo</h3>
 
-        <div className="manual-group-form__field">
-          <Label htmlFor="groupName">Nombre del Grupo *</Label>
-          <Input
-            type="text"
-            name="groupName"
-            value={groupName}
-            onChange={(e) => setGroupName(e.target.value)}
-            placeholder="Ej: Grupo de Investigación, Equipo A, etc."
-            required
-          />
-        </div>
+        <FormField
+          label="Nombre del Grupo"
+          type="text"
+          name="groupName"
+          value={groupName}
+          onChange={(e) => setGroupName(e.target.value)}
+          placeholder="Ej: Grupo de Investigación, Equipo A, etc."
+          required
+          error={errors.groupName}
+          disabled={loading}
+        />
       </div>
 
       <div className="manual-group-form__section">
         <h3 className="manual-group-form__section-title">Información del Curso</h3>
 
         <div className="manual-group-form__row">
-          <div className="manual-group-form__field">
-            <Label htmlFor="courseName">Nombre del Curso *</Label>
-            <Input
-              type="text"
-              name="courseName"
-              value={courseName}
-              onChange={(e) => setCourseName(e.target.value)}
-              placeholder="Ej: Matemáticas Avanzadas"
-              required
-            />
-          </div>
-
-          <div className="manual-group-form__field">
-            <Label htmlFor="level">Nivel *</Label>
-            <Input
-              type="text"
-              name="level"
-              value={level}
-              onChange={(e) => setLevel(e.target.value)}
-              placeholder="Ej: 5to Secundaria"
-              required
-            />
-          </div>
-        </div>
-
-        <div className="manual-group-form__field">
-          <Label htmlFor="academicPeriod">Período Académico *</Label>
-          <Input
+          <FormField
+            label="Nombre del Curso"
             type="text"
-            name="academicPeriod"
-            value={academicPeriod}
-            onChange={(e) => setAcademicPeriod(e.target.value)}
-            placeholder="Ej: 2024-1, Primer Semestre 2024"
+            name="courseName"
+            value={courseName}
+            onChange={(e) => setCourseName(e.target.value)}
+            placeholder="Ej: Matemáticas Avanzadas"
             required
+            error={errors.courseName}
+            disabled={loading}
+          />
+
+          <FormField
+            label="Nivel"
+            type="text"
+            name="level"
+            value={level}
+            onChange={(e) => setLevel(e.target.value)}
+            placeholder="Ej: 5to Secundaria"
+            required
+            error={errors.level}
+            disabled={loading}
           />
         </div>
+
+        <FormField
+          label="Período Académico"
+          type="text"
+          name="academicPeriod"
+          value={academicPeriod}
+          onChange={(e) => setAcademicPeriod(e.target.value)}
+          placeholder="Ej: 2024-1, Primer Semestre 2024"
+          required
+          error={errors.academicPeriod}
+          disabled={loading}
+        />
       </div>
 
       <div className="manual-group-form__section">
@@ -169,6 +207,7 @@ const ManualGroupForm = ({ userId, onSuccess, onCancel }) => {
             variant="secondary"
             size="small"
             onClick={handleAddStudent}
+            disabled={loading}
           >
             ➕ Agregar Estudiante
           </Button>
@@ -182,18 +221,21 @@ const ManualGroupForm = ({ userId, onSuccess, onCancel }) => {
               </div>
 
               <div className="manual-group-form__student-fields">
-                <Input
+                <FormField
                   type="text"
                   placeholder="Nombre completo *"
                   value={student.fullName}
                   onChange={(e) => handleStudentChange(index, 'fullName', e.target.value)}
                   required
+                  error={errors[`student-${index}-fullName`]}
+                  disabled={loading}
                 />
-                <Input
+                <FormField
                   type="text"
                   placeholder="Código (opcional)"
                   value={student.studentCode}
                   onChange={(e) => handleStudentChange(index, 'studentCode', e.target.value)}
+                  disabled={loading}
                 />
               </div>
 
@@ -203,6 +245,7 @@ const ManualGroupForm = ({ userId, onSuccess, onCancel }) => {
                   className="manual-group-form__remove-btn"
                   onClick={() => handleRemoveStudent(index)}
                   title="Eliminar estudiante"
+                  disabled={loading}
                 >
                   🗑️
                 </button>
@@ -227,6 +270,7 @@ const ManualGroupForm = ({ userId, onSuccess, onCancel }) => {
           variant="primary"
           size="medium"
           loading={loading}
+          disabled={loading}
         >
           Crear Grupo Independiente
         </Button>

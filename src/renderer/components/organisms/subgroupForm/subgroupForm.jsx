@@ -6,50 +6,54 @@ import { groupService } from '../../../services';
 import './subgroupForm.css';
 
 const SubgroupForm = ({ parentGroup, subgroup, userId, onSuccess, onCancel }) => {
+  const isEditMode = !!subgroup;
   const [name, setName] = useState('');
   const [selectedStudents, setSelectedStudents] = useState([]);
   const [loading, setLoading] = useState(false);
   const [parentGroupData, setParentGroupData] = useState(null);
+  const [excludedStudents, setExcludedStudents] = useState([]); // IDs de estudiantes en OTROS subgrupos
 
   useEffect(() => {
-    loadParentGroupData();
-  }, [parentGroup]);
+    loadSubgroupFormData(); // Función unificada de carga
+  }, [parentGroup, subgroup]);
 
-  useEffect(() => {
-    if (subgroup) {
-      setName(subgroup.name || '');
-      loadSubgroupStudents();
-    }
-  }, [subgroup]);
-
-  const loadParentGroupData = async () => {
+  const loadSubgroupFormData = async () => {
     if (!parentGroup) return;
+    setLoading(true);
 
     try {
-      const result = await groupService.getDetails(parentGroup.id, userId);
+      // Usar el nuevo servicio especializado
+      const result = await groupService.loadSubgroupForm(
+        parentGroup.id,
+        subgroup ? subgroup.id : null, 
+        userId
+      );
+      
       if (result.success) {
-        setParentGroupData(result.group);
+        setParentGroupData(result.parentGroup);
+        setExcludedStudents(result.excludedStudentIds); 
+        
+        if (subgroup) {
+          setName(subgroup.name || '');
+          // Usar los estudiantes que ya están en este subgrupo
+          setSelectedStudents(result.currentSubgroupStudents);
+        }
       }
     } catch (error) {
-      console.error('Error al cargar grupo padre:', error);
+      console.error('Error al cargar datos del formulario de subgrupo:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const loadSubgroupStudents = async () => {
-    if (!subgroup) return;
-
-    try {
-      const result = await groupService.getDetails(subgroup.id, userId);
-      if (result.success && result.group.students) {
-        const studentIds = result.group.students.map(s => s.id);
-        setSelectedStudents(studentIds);
-      }
-    } catch (error) {
-      console.error('Error al cargar estudiantes del subgrupo:', error);
-    }
-  };
 
   const handleStudentToggle = (studentId) => {
+    // En modo creación, no se puede seleccionar si ya está en otro subgrupo
+    const isExcluded = !isEditMode && excludedStudents.includes(studentId);
+    if (isExcluded) {
+        return; 
+    }
+    
     setSelectedStudents(prev => {
       if (prev.includes(studentId)) {
         return prev.filter(id => id !== studentId);
@@ -61,7 +65,12 @@ const SubgroupForm = ({ parentGroup, subgroup, userId, onSuccess, onCancel }) =>
 
   const handleSelectAll = () => {
     if (!parentGroupData) return;
-    const allIds = parentGroupData.students.map(s => s.id);
+    
+    // Solo seleccionar estudiantes que NO están excluidos (en modo creación)
+    const availableStudents = parentGroupData.students.filter(s => 
+        isEditMode || !excludedStudents.includes(s.id)
+    );
+    const allIds = availableStudents.map(s => s.id);
     setSelectedStudents(allIds);
   };
 
@@ -134,6 +143,13 @@ const SubgroupForm = ({ parentGroup, subgroup, userId, onSuccess, onCancel }) =>
         <p className="subgroup-form__parent-students">
           {parentGroupData.students?.length || 0} estudiantes disponibles
         </p>
+        
+        {/* Advertencia de exclusión */}
+        {!isEditMode && excludedStudents.length > 0 && (
+            <p className="subgroup-form__parent-students" style={{ color: 'var(--color-danger)', fontWeight: 'bold' }}>
+                ⚠️ {excludedStudents.length} estudiante(s) ya están en otro subgrupo y no son seleccionables.
+            </p>
+        )}
       </div>
 
       <div className="subgroup-form__field">
@@ -171,29 +187,38 @@ const SubgroupForm = ({ parentGroup, subgroup, userId, onSuccess, onCancel }) =>
 
         <div className="subgroup-form__students-list">
           {parentGroupData.students && parentGroupData.students.length > 0 ? (
-            parentGroupData.students.map(student => (
-              <label key={student.id} className="subgroup-form__student-item">
-                <input
-                  type="checkbox"
-                  checked={selectedStudents.includes(student.id)}
-                  onChange={() => handleStudentToggle(student.id)}
-                  className="subgroup-form__checkbox"
-                />
-                <div className="subgroup-form__student-info">
-                  <span className="subgroup-form__student-number">
-                    N° {student.list_number}
-                  </span>
-                  <span className="subgroup-form__student-name">
-                    {student.full_name}
-                  </span>
-                  {student.student_code && (
-                    <span className="subgroup-form__student-code">
-                      {student.student_code}
-                    </span>
-                  )}
-                </div>
-              </label>
-            ))
+            parentGroupData.students.map(student => {
+                const isExcluded = !isEditMode && excludedStudents.includes(student.id);
+                
+                return (
+                    <label 
+                        key={student.id} 
+                        className={`subgroup-form__student-item ${isExcluded ? 'subgroup-form__student-item--excluded' : ''}`}
+                        style={{ opacity: isExcluded ? 0.5 : 1, cursor: isExcluded ? 'not-allowed' : 'pointer' }}
+                    >
+                        <input
+                            type="checkbox"
+                            checked={selectedStudents.includes(student.id)}
+                            onChange={() => handleStudentToggle(student.id)}
+                            className="subgroup-form__checkbox"
+                            disabled={isExcluded} // Deshabilitar si está excluido
+                        />
+                        <div className="subgroup-form__student-info">
+                            <span className="subgroup-form__student-number">
+                                N° {student.list_number}
+                            </span>
+                            <span className="subgroup-form__student-name">
+                                {student.full_name} {isExcluded ? '(Ya en otro subgrupo)' : ''}
+                            </span>
+                            {student.student_code && (
+                                <span className="subgroup-form__student-code">
+                                    {student.student_code}
+                                </span>
+                            )}
+                        </div>
+                    </label>
+                );
+            })
           ) : (
             <p className="subgroup-form__empty">No hay estudiantes en el grupo padre</p>
           )}

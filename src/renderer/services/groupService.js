@@ -21,6 +21,26 @@ class GroupService {
   }
 
   /**
+   * Cargar datos específicos para el formulario de subgrupo (incluyendo exclusiones)
+   */
+  async loadSubgroupForm(parentGroupId, subgroupId, userId) {
+    try {
+      const result = await ipcService.invoke('groups:loadSubgroupForm', {
+        parentGroupId,
+        subgroupId,
+        userId
+      });
+      return result;
+    } catch (error) {
+      console.error('Error al cargar datos del formulario de subgrupo:', error);
+      return {
+        success: false,
+        error: 'Error al cargar datos del formulario de subgrupo'
+      };
+    }
+  }
+
+  /**
    * Crear subgrupo
    */
   async createSubgroup(parentGroupId, name, studentIds, userId) {

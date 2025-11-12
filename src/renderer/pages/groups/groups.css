@@ -270,3 +270,13 @@
     flex: 1;
   }
 }
+
+/* Estilo para mensajes de error en formularios */
+.form-error-message {
+  color: var(--color-danger);
+  font-size: 0.875rem;
+  margin-top: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}

@@ -110,6 +110,19 @@ function registerGroupHandlers() {
     }
   });
 
+  /**
+   * Cargar datos para el formulario de subgrupo (incluyendo exclusiones)
+   */
+  ipcMain.handle('groups:loadSubgroupForm', async (event, { parentGroupId, subgroupId, userId }) => {
+    try {
+      // Asumimos que subgroupId puede ser null
+      return await groupService.loadSubgroupFormData(parentGroupId, subgroupId, userId);
+    } catch (error) {
+      console.error('Error en IPC groups:loadSubgroupForm:', error);
+      return { success: false, error: 'Error al cargar datos del formulario de subgrupo' };
+    }
+  });
+
   console.log('✅ Group handlers registrados');
 }
 

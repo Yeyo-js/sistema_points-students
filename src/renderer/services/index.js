@@ -3,12 +3,9 @@ import courseService from './courseService';
 import studentService from './studentService';
 import pointService from './pointService';
 import participationTypeService from './participationTypeService';
-<<<<<<< HEAD
-import dashboardService from './dashboardService';
-import excelService from './excelService';
-import groupService from './groupService';
-=======
->>>>>>> d482281f9627b54c9bfafe1dfe88ce4b95cc1304
+import dashboardService from './dashboardService'; // Incluido
+import excelService from './excelService'; // Incluido
+import groupService from './groupService'; // Incluido
 import ipcService from './ipcService';
 
 
@@ -18,11 +15,8 @@ export {
   studentService,
   pointService,
   participationTypeService,
-<<<<<<< HEAD
-  dashboardService,
-  excelService,
-  groupService,
-=======
->>>>>>> d482281f9627b54c9bfafe1dfe88ce4b95cc1304
+  dashboardService, // Incluido
+  excelService, // Incluido
+  groupService, // Incluido
   ipcService
 };

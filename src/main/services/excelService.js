@@ -203,7 +203,6 @@ class ExcelService {
       return ErrorHandler.handleDatabaseError(error);
     }
   }
-
   /**
    * Importar estudiantes desde Excel
    */
@@ -248,12 +247,23 @@ class ExcelService {
         if (rowNumber === 1) return;
 
         try {
-          // Leer datos (esperamos: N° Lista, Código, Nombre Completo)
-          const listNumber = row.getCell(1).value ? parseInt(row.getCell(1).value) : null;
+          // Leer y sanitizar datos
+          // listNumber debe ser un entero
+          let listNumber = row.getCell(1).value ? parseInt(row.getCell(1).value) : null;
           const studentCode = row.getCell(2).value ? String(row.getCell(2).value).trim() : '';
           const fullName = row.getCell(3).value ? String(row.getCell(3).value).trim() : '';
+          
+          // 1. CORRECCIÓN CRÍTICA: Validar Número de Lista (es obligatorio según DB)
+          if (!listNumber || !Number.isInteger(listNumber) || listNumber < 1) {
+            results.errors.push({
+              row: rowNumber,
+              error: 'El número de lista (columna A) es requerido y debe ser un entero positivo',
+              data: { listNumber, studentCode, fullName }
+            });
+            return;
+          }
 
-          // Validar datos obligatorios
+          // Validar Nombre Completo (obligatorio)
           if (!fullName || fullName === '') {
             results.errors.push({
               row: rowNumber,
@@ -263,11 +273,11 @@ class ExcelService {
             return;
           }
 
-          // Validar longitud del nombre
-          if (fullName.length < 3 || fullName.length > 200) {
+          // Validar longitud del nombre (Consistente con studentService.js: 3-100 caracteres)
+          if (fullName.length < 3 || fullName.length > 100) {
             results.errors.push({
               row: rowNumber,
-              error: 'El nombre debe tener entre 3 y 200 caracteres',
+              error: 'El nombre debe tener entre 3 y 100 caracteres',
               data: { listNumber, studentCode, fullName }
             });
             return;
@@ -288,26 +298,27 @@ class ExcelService {
           }
 
           // Verificar duplicados por número de lista
-          if (listNumber) {
-            const existingByList = studentRepository.findByListNumber(courseId, listNumber);
-            if (existingByList) {
-              results.duplicates.push({
-                row: rowNumber,
-                reason: 'Número de lista ya existe',
-                data: { listNumber, studentCode, fullName },
-                existing: existingByList
-              });
-              return;
-            }
+          const existingByList = studentRepository.findByListNumber(courseId, listNumber);
+          if (existingByList) {
+            results.duplicates.push({
+              row: rowNumber,
+              reason: 'Número de lista ya existe',
+              data: { listNumber, studentCode, fullName },
+              existing: existingByList
+            });
+            return;
           }
 
-          // Insertar estudiante
-          const studentId = studentRepository.insert(
+          // Insertar estudiante 
+          const result = studentRepository.insert(
             courseId,
             fullName,
             studentCode || null,
             listNumber
           );
+          
+          // 2. CORRECCIÓN: Correcta extracción del ID del objeto retornado
+          const studentId = result.lastInsertRowid;
 
           results.imported.push({
             row: rowNumber,
@@ -336,7 +347,7 @@ class ExcelService {
       ErrorHandler.logCriticalError(error, { action: 'importStudents', courseId });
       return {
         success: false,
-        error: error.message || 'Error al importar estudiantes'
+        error: error.message || 'Error al importar estudiantes. Verifica que el archivo no esté corrupto y sigue el formato de la plantilla.'
       };
     }
   }

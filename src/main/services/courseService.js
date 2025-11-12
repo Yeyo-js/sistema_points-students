@@ -208,22 +208,17 @@ class CourseService {
         return ErrorHandler.handleAuthorizationError('No tienes permiso para eliminar este curso');
       }
 
-      // Verificar si tiene estudiantes
-      const stats = courseRepository.getStatistics(courseId);
+      // === LÓGICA DE VALIDACIÓN ELIMINADA (CORRECCIÓN) ===
+      // Ya no bloqueamos la eliminación. La base de datos se encargará de:
+      // DELETE FROM students WHERE course_id = ?
+      // Y las FKs en points, student_totals, y group_students se encargarán del resto.
       
-      if (stats.total_students > 0) {
-        return ErrorHandler.createError(
-          ErrorHandler.ErrorTypes.VALIDATION,
-          `No se puede eliminar el curso porque tiene ${stats.total_students} estudiante(s) registrado(s). Elimina primero los estudiantes.`
-        );
-      }
-
       // Eliminar curso
       courseRepository.delete(courseId);
 
       return {
         success: true,
-        message: 'Curso eliminado exitosamente'
+        message: 'Curso y todos los datos asociados eliminados exitosamente'
       };
 
     } catch (error) {

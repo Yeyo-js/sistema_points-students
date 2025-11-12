@@ -4,11 +4,7 @@ import Button from '../../atoms/button';
 import FormField from '../../molecules/formField';
 import Select from '../../atoms/select';
 import Label from '../../atoms/label';
-<<<<<<< HEAD
 import { participationTypeService, pointService } from '../../../services';
-=======
-import { participationTypeService } from '../../../services';
->>>>>>> d482281f9627b54c9bfafe1dfe88ce4b95cc1304
 import './pointForm.css';
 
 const PointForm = ({ point = null, studentId, studentName, onSuccess, onCancel }) => {
@@ -18,11 +14,7 @@ const PointForm = ({ point = null, studentId, studentName, onSuccess, onCancel }
     participationTypeId: '',
     pointsValue: '',
     reason: '',
-<<<<<<< HEAD
-    customTypeName: '' //nombre personalizado cuando se selecciona "Otros"
-=======
-    customTypeName: '' // Nuevo: nombre personalizado cuando se selecciona "Otros"
->>>>>>> d482281f9627b54c9bfafe1dfe88ce4b95cc1304
+    customTypeName: ''
   });
 
   const [participationTypes, setParticipationTypes] = useState([]);
@@ -30,11 +22,7 @@ const PointForm = ({ point = null, studentId, studentName, onSuccess, onCancel }
   const [loading, setLoading] = useState(false);
   const [loadingTypes, setLoadingTypes] = useState(true);
   const [generalError, setGeneralError] = useState('');
-<<<<<<< HEAD
-  const [showCustomInput, setShowCustomInput] = useState(false); //controlar visibilidad del input
-=======
-  const [showCustomInput, setShowCustomInput] = useState(false); // Nuevo: controlar visibilidad del input
->>>>>>> d482281f9627b54c9bfafe1dfe88ce4b95cc1304
+  const [showCustomInput, setShowCustomInput] = useState(false);
 
   useEffect(() => {
     loadParticipationTypes();
@@ -90,6 +78,7 @@ const PointForm = ({ point = null, studentId, studentName, onSuccess, onCancel }
       }
     } catch (error) {
       console.error('Error al cargar tipos de participación:', error);
+      setGeneralError('Error al cargar los tipos de participación. Intenta nuevamente.');
     } finally {
       setLoadingTypes(false);
     }
@@ -161,13 +150,6 @@ const PointForm = ({ point = null, studentId, studentName, onSuccess, onCancel }
     setGeneralError('');
 
     try {
-<<<<<<< HEAD
-=======
-      // Importar el servicio aquí para evitar circular dependencies
-      const { pointService } = await import('../../../services');
-      const { participationTypeService } = await import('../../../services');
-
->>>>>>> d482281f9627b54c9bfafe1dfe88ce4b95cc1304
       let finalParticipationTypeId = formData.participationTypeId;
 
       // Si seleccionó "Otros", crear el tipo de participación personalizado primero
@@ -210,7 +192,8 @@ const PointForm = ({ point = null, studentId, studentName, onSuccess, onCancel }
       if (result.success) {
         console.log(`✅ Punto ${isEditMode ? 'actualizado' : 'asignado'} exitosamente`);
         if (onSuccess) {
-          onSuccess(result);
+          // CORRECCIÓN: Pasar el resultado completo de la operación (contiene studentTotals)
+          onSuccess(result); 
         }
       } else {
         setGeneralError(result.error || `Error al ${isEditMode ? 'actualizar' : 'asignar'} punto`);

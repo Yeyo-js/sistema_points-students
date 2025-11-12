@@ -3,6 +3,7 @@ const courseRepository = require('../database/repositories/courseRepository');
 const pointRepository = require('../database/repositories/pointRepository');
 const Validators = require('../../shared/utils/validators');
 const ErrorHandler = require('../../shared/utils/errorHandler');
+const groupRepository = require('../database/repositories/groupRepository')
 
 class StudentService {
   // Crear estudiante con validaciones
@@ -20,7 +21,7 @@ class StudentService {
         studentCode = Validators.sanitize(studentCode);
       }
 
-      // Validar campos requeridos
+      // Validar campos requeridos y longitudes
       if (!fullName || fullName.trim() === '') {
         return ErrorHandler.handleValidationError('fullName', 'El nombre completo es requerido');
       }
@@ -29,7 +30,6 @@ class StudentService {
         return ErrorHandler.handleValidationError('fullName', 'El nombre debe tener entre 3 y 100 caracteres');
       }
 
-      // Validar código de estudiante (máximo 14 dígitos)
       if (studentCode && studentCode.length > 14) {
         return ErrorHandler.handleValidationError('studentCode', 'El código de estudiante no puede exceder 14 caracteres');
       }
@@ -39,7 +39,6 @@ class StudentService {
         return ErrorHandler.handleValidationError('listNumber', 'El número de lista debe ser mayor a 0');
       }
 
-      // Validar que el número de lista no exceda 3 dígitos (999)
       if (listNumber > 999) {
         return ErrorHandler.handleValidationError('listNumber', 'El número de lista no puede exceder 999');
       }
@@ -71,6 +70,19 @@ class StudentService {
       
       const result = studentRepository.insert(courseId, fullName, studentCode, listNumber);
       const studentId = result.lastInsertRowid;
+
+      // ========== LÓGICA DE GRUPOS (CORRECCIÓN) ==========
+      // 1. Buscar si existe un grupo general para este curso
+      const existingGroups = groupRepository.findByCourse(courseId);
+      // Asumimos que solo puede haber un grupo 'general' por curso.
+      const generalGroup = existingGroups.find(g => g.type === 'general');
+
+      if (generalGroup) {
+        // 2. Si existe, añadir el nuevo estudiante al grupo general
+        groupRepository.addStudent(generalGroup.id, studentId);
+        console.log(`✅ Estudiante ${studentId} añadido automáticamente al Grupo General ${generalGroup.id}.`);
+      }
+      // =============================================
 
       const student = studentRepository.findById(studentId);
 
@@ -261,8 +273,9 @@ class StudentService {
       if (!student) {
         return ErrorHandler.handleNotFoundError('Estudiante');
       }
-
-      studentRepository.delete(studentId);
+      
+      // La eliminación en cascada sucede aquí
+      studentRepository.delete(studentId); 
 
       return {
         success: true,
@@ -271,7 +284,14 @@ class StudentService {
 
     } catch (error) {
       ErrorHandler.logCriticalError(error, { action: 'forceDeleteStudent', studentId });
-      return ErrorHandler.handleDatabaseError(error);
+      
+      // CORRECCIÓN: Devolver el mensaje de error explícito del ErrorHandler 
+      // para evitar errores genéricos de conexión en el frontend.
+      const dbError = ErrorHandler.handleDatabaseError(error);
+      return { 
+          success: false, 
+          error: dbError.message || 'Error interno de la base de datos al eliminar.' 
+      };
     }
   }
 }

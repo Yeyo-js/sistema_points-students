@@ -102,20 +102,40 @@ const StudentsPage = () => {
   };
 
   const handleDeleteStudent = async (studentId) => {
-    if (!window.confirm('¿Estás seguro de eliminar este estudiante? Esta acción no se puede deshacer.')) {
-      return;
-    }
-
     try {
-      const result = await studentService.deleteStudent(studentId);
+      // 1. Intentamos la eliminación normal. El servicio de backend nos indicará si tiene puntos.
+      let result = await studentService.deleteStudent(studentId);
+
       if (result.success) {
+        // Éxito: el estudiante no tenía puntos o la eliminación normal fue suficiente.
         await loadStudents(selectedCourseId);
+        alert('Estudiante eliminado exitosamente!');
+
+      } else if (result.requiresConfirmation) {
+        // Caso: El estudiante tiene puntos y el backend requiere confirmación
+        
+        // Mostrar la confirmación usando el mensaje detallado del backend
+        if (window.confirm(result.message)) {
+          
+          // Si el usuario confirma, llamamos al servicio de eliminación forzada
+          const forceResult = await studentService.forceDeleteStudent(studentId);
+
+          if (forceResult.success) {
+            await loadStudents(selectedCourseId);
+            // Si el curso tiene un grupo general, debemos recargarlo en la página de grupos
+            // para actualizar el recuento de estudiantes.
+            alert('Estudiante y todos los datos asociados (puntos y grupos) eliminados exitosamente!');
+          } else {
+            alert(forceResult.error || 'Error al forzar la eliminación del estudiante.');
+          }
+        }
       } else {
+        // Caso: Error de validación o DB sin requerir confirmación
         alert(result.error || 'Error al eliminar estudiante');
       }
     } catch (error) {
       console.error('Error al eliminar estudiante:', error);
-      alert('Error al eliminar estudiante');
+      alert('Error de conexión al eliminar estudiante.');
     }
   };
 

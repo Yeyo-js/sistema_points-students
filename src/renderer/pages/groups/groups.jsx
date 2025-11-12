@@ -9,9 +9,91 @@ import Label from '../../components/atoms/label';
 import SubgroupForm from '../../components/organisms/subgroupForm/subgroupForm';
 import ManualGroupForm from '../../components/organisms/manualGroupForm/manualGroupForm';
 import GroupPointsForm from '../../components/organisms/groupPointsForm/groupPointsForm';
+import FormField from '../../components/molecules/formField/formField'; // <-- CORRECCIÓN: IMPORTE AÑADIDO
 import { groupService, courseService } from '../../services';
 import { useAuth } from '../../context/authContext';
 import './groups.css';
+
+// Componente Auxiliar para edición de nombre de grupo General/Independiente
+const GroupEditForm = ({ group, onSuccess, onCancel, updateGroupHandler }) => {
+  const [name, setName] = useState(group.name);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!name.trim() || name.length < 3) {
+      setError('El nombre del grupo es requerido y debe tener al menos 3 caracteres');
+      return;
+    }
+    
+    setLoading(true);
+    setError('');
+
+    try {
+      // Llamar a la función de actualización pasada por props
+      const result = await updateGroupHandler(group.id, { name: name.trim() });
+      if (result.success) {
+        onSuccess();
+      } else {
+        setError(result.error || 'Error al actualizar el nombre del grupo.');
+      }
+    } catch (err) {
+      setError('Error de conexión al actualizar el nombre del grupo.');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="course-form">
+      {error && (
+        <div className="course-form__error-banner" style={{marginBottom: '1.5rem'}}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <span>{error}</span>
+        </div>
+      )}
+      <FormField
+        label="Nuevo Nombre del Grupo"
+        type="text"
+        name="name"
+        value={name}
+        onChange={(e) => {
+            setName(e.target.value);
+            setError('');
+        }}
+        placeholder="Ej: Grupo General, Equipo de Proyecto A"
+        required
+        disabled={loading}
+      />
+      <div className="course-form__actions" style={{ marginTop: '1.5rem' }}>
+        <Button
+          type="button"
+          variant="secondary"
+          size="medium"
+          onClick={onCancel}
+          disabled={loading}
+        >
+          Cancelar
+        </Button>
+        <Button
+          type="submit"
+          variant="primary"
+          size="medium"
+          loading={loading}
+          disabled={loading}
+        >
+          {loading ? 'Guardando...' : 'Guardar Nombre'}
+        </Button>
+      </div>
+    </form>
+  );
+};
 
 const GroupsPage = () => {
   const { user } = useAuth();
@@ -25,6 +107,7 @@ const GroupsPage = () => {
   const [showManualModal, setShowManualModal] = useState(false);
   const [showSubgroupModal, setShowSubgroupModal] = useState(false);
   const [showPointsModal, setShowPointsModal] = useState(false);
+  const [showNameEditModal, setShowNameEditModal] = useState(false); // <-- NUEVO ESTADO
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [selectedParentGroup, setSelectedParentGroup] = useState(null);
 
@@ -115,11 +198,9 @@ const GroupsPage = () => {
       setSelectedGroup(group);
       setShowSubgroupModal(true);
     } else {
-      // Editar nombre del grupo general o independiente
-      const newName = prompt('Nuevo nombre del grupo:', group.name);
-      if (newName && newName !== group.name) {
-        handleUpdateGroup(group.id, { name: newName });
-      }
+      // Editar nombre de grupo general o independiente usando el nuevo modal
+      setSelectedGroup(group);
+      setShowNameEditModal(true);
     }
   };
 
@@ -128,13 +209,13 @@ const GroupsPage = () => {
       const result = await groupService.update(groupId, updateData, user.id);
 
       if (result.success) {
-        await loadCourseGroups(selectedCourseId);
+        return { success: true };
       } else {
-        alert(`Error: ${result.error}`);
+        return { success: false, error: result.error };
       }
     } catch (error) {
       console.error('Error:', error);
-      alert('Error al actualizar grupo');
+      return { success: false, error: 'Error al actualizar grupo' };
     }
   };
 
@@ -160,6 +241,17 @@ const GroupsPage = () => {
   const handleAssignPoints = (group) => {
     setSelectedGroup(group);
     setShowPointsModal(true);
+  };
+  
+  const handleNameEditSuccess = async () => {
+    setShowNameEditModal(false);
+    setSelectedGroup(null);
+    await loadCourseGroups(selectedCourseId);
+  };
+  
+  const handleNameEditCancel = () => {
+    setShowNameEditModal(false);
+    setSelectedGroup(null);
   };
 
   const handleSubgroupFormSuccess = async () => {
@@ -467,6 +559,23 @@ const GroupsPage = () => {
                 setShowPointsModal(false);
                 setSelectedGroup(null);
               }}
+            />
+          )}
+        </Modal>
+
+        {/* Modal de edición de nombre de grupo general/independiente */}
+        <Modal
+          isOpen={showNameEditModal}
+          onClose={handleNameEditCancel}
+          title="Editar Nombre del Grupo"
+          size="small"
+        >
+          {selectedGroup && (
+            <GroupEditForm
+              group={selectedGroup}
+              onSuccess={handleNameEditSuccess}
+              onCancel={handleNameEditCancel}
+              updateGroupHandler={handleUpdateGroup}
             />
           )}
         </Modal>

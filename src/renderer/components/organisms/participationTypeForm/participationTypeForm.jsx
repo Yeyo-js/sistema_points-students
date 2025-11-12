@@ -82,17 +82,20 @@ const ParticipationTypeForm = ({ participationType = null, onSuccess, onCancel }
 
     try {
       let result;
+      // CORRECCIÓN CRÍTICA: Se usa Number() para asegurar que se envía un tipo numérico seguro,
+      // protegiendo contra errores de serialización de NaN o string.
+      const pointsToSend = Number(formData.defaultPoints); 
 
       if (isEditMode) {
         result = await participationTypeService.updateParticipationType(
           participationType.id,
           formData.name.trim(),
-          parseInt(formData.defaultPoints)
+          pointsToSend
         );
       } else {
         result = await participationTypeService.createParticipationType(
           formData.name.trim(),
-          parseInt(formData.defaultPoints)
+          pointsToSend
         );
       }
 
@@ -101,6 +104,7 @@ const ParticipationTypeForm = ({ participationType = null, onSuccess, onCancel }
           onSuccess(result);
         }
       } else {
+        // Muestra el mensaje de error específico del backend (ej: duplicado)
         setGeneralError(result.error || `Error al ${isEditMode ? 'actualizar' : 'crear'} el tipo de participación`);
       }
     } catch (error) {
@@ -115,6 +119,11 @@ const ParticipationTypeForm = ({ participationType = null, onSuccess, onCancel }
     <form className="participation-type-form" onSubmit={handleSubmit}>
       {generalError && (
         <div className="participation-type-form__error">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
           {generalError}
         </div>
       )}

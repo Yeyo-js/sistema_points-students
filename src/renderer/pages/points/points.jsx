@@ -8,11 +8,7 @@ import Select from '../../components/atoms/select';
 import Label from '../../components/atoms/label';
 import PointForm from '../../components/organisms/pointForm';
 import BulkPointForm from '../../components/organisms/bulkPointForm';
-<<<<<<< HEAD
 import { studentService, courseService, pointService, excelService } from '../../services';
-=======
-import { studentService, courseService, pointService } from '../../services';
->>>>>>> d482281f9627b54c9bfafe1dfe88ce4b95cc1304
 import { useAuth } from '../../context/authContext';
 import './points.css';
 
@@ -185,12 +181,13 @@ const PointsPage = () => {
     }
   };
 
-  const handleFormSuccess = async () => {
+  const handleFormSuccess = async (updateResult) => { // AHORA RECIBE EL RESULTADO
     setIsModalOpen(false);
     setSelectedPoint(null);
     
-    // Recargar estudiantes primero para actualizar totales
-    await loadStudents(selectedCourseId);
+    // Recargar estudiantes primero para actualizar totales y forzar recálculo de selectedStudent
+    // Este re-fetch es necesario para que el nuevo estado de 'students' actualice la variable derivada 'selectedStudent'
+    await loadStudents(selectedCourseId); 
     
     // Luego recargar la lista según el filtro actual
     if (filterType === 'student' && selectedStudentId) {
@@ -222,7 +219,6 @@ const PointsPage = () => {
     setIsBulkModalOpen(false);
   };
 
-<<<<<<< HEAD
   const handleExportPoints = async () => {
     if (!selectedCourseId) {
       alert('Selecciona un curso primero');
@@ -249,8 +245,7 @@ const PointsPage = () => {
     }
   };
 
-=======
->>>>>>> d482281f9627b54c9bfafe1dfe88ce4b95cc1304
+
   const selectedCourse = courses.find(c => c.id === selectedCourseId);
   const selectedStudent = students.find(s => s.id === parseInt(selectedStudentId));
 
@@ -319,7 +314,6 @@ const PointsPage = () => {
                   }
                 />
               </div>
-<<<<<<< HEAD
               <div className="points-page__actions">
                 <Button
                   variant="secondary"
@@ -344,21 +338,6 @@ const PointsPage = () => {
                   {selectedStudentId ? 'Asignar Puntos' : 'Asignar a Todos'}
                 </Button>
               </div>
-=======
-              <Button
-                variant="primary"
-                size="medium"
-                onClick={handleAssignPoints}
-                icon={
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <line x1="12" y1="5" x2="12" y2="19"/>
-                    <line x1="5" y1="12" x2="19" y2="12"/>
-                  </svg>
-                }
-              >
-                {selectedStudentId ? 'Asignar Puntos' : 'Asignar a Todos'}
-              </Button>
->>>>>>> d482281f9627b54c9bfafe1dfe88ce4b95cc1304
             </>
           )}
         </div>

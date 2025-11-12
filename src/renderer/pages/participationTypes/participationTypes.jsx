@@ -1,8 +1,10 @@
+// src/renderer/pages/participationTypes/participationTypes.jsx
+
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from '../../components/templates/dashboardLayout/dashboardLayout';
 import Card from '../../components/atoms/card';
 import Button from '../../components/atoms/button';
-import Modal from '../../components/molecules/modal';
+import Modal from '../../components/atoms/modal'; // <-- CORRECCIÓN: La ruta correcta es atoms/modal
 import ParticipationTypeForm from '../../components/organisms/participationTypeForm/participationTypeForm';
 import { participationTypeService } from '../../services';
 import './participationTypes.css';
@@ -47,6 +49,8 @@ const ParticipationTypesPage = () => {
   };
 
   const handleDelete = async (type) => {
+    // Si la eliminación falló por el error de renderizado, este confirm no se ejecutó.
+    // Ahora debería funcionar correctamente.
     if (!window.confirm(`¿Estás seguro de eliminar el tipo "${type.name}"?\n\nSi tiene puntos asignados, no se podrá eliminar.`)) {
       return;
     }
@@ -136,6 +140,7 @@ const ParticipationTypesPage = () => {
                 </div>
 
                 <div className="participation-type-card__meta">
+                  {/* Nota: is_predefined no existe en el esquema de BD, pero se deja para futura implementación. */}
                   {type.is_predefined ? (
                     <span className="participation-type-card__badge participation-type-card__badge--predefined">
                       Predefinido
@@ -156,21 +161,20 @@ const ParticipationTypesPage = () => {
 
                 <div className="participation-type-card__actions">
                   <Button
-                    variant="outline"
+                    variant="secondary"
                     size="small"
                     onClick={() => handleEdit(type)}
                   >
                     Editar
                   </Button>
-                  {!type.is_predefined && (
-                    <Button
-                      variant="danger-outline"
-                      size="small"
-                      onClick={() => handleDelete(type)}
-                    >
-                      Eliminar
-                    </Button>
-                  )}
+                  {/* Nota: No hay campo is_predefined en BD, se asume que todos son editables/eliminables si son del usuario */}
+                  <Button
+                    variant="danger"
+                    size="small"
+                    onClick={() => handleDelete(type)}
+                  >
+                    Eliminar
+                  </Button>
                 </div>
               </Card>
             ))}

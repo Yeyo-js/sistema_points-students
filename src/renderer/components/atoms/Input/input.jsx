@@ -27,13 +27,18 @@ const Input = ({
     className
   ].filter(Boolean).join(' ');
 
+  // CORRECCIÓN CRÍTICA: Coerción defensiva del valor. 
+  // Asegura que si value es null o undefined, el input reciba una cadena vacía (''),
+  // previniendo el bug de inputs incontrolables en React.
+  const finalValue = value === null || value === undefined ? '' : value;
+
   return (
     <div className="input-wrapper">
       {icon && <span className="input__icon">{icon}</span>}
       <input
         type={type}
         name={name}
-        value={value}
+        value={finalValue} // Usamos el valor coercido
         onChange={onChange}
         onBlur={onBlur}
         placeholder={placeholder}
