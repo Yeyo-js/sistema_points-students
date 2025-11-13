@@ -63,14 +63,12 @@ const ParticipationTypesPage = () => {
         await loadParticipationTypes(); // Esta función ya tiene su propio setLoading(false)
       } else {
         alert(result.error || 'Error al eliminar el tipo de participación');
-        setLoading(false);
+        setLoading(false); // <--- Asegurar en caso de error de borrado
       }
     } catch (error) {
       console.error('Error al eliminar tipo:', error);
       alert('Error al eliminar el tipo de participación');
-    } finally {
-        // CORRECCIÓN: Garantiza que el loading se detenga si la lógica falla
-        setLoading(false); 
+      setLoading(false); // <--- Asegurar en caso de error de catch
     }
   };
 

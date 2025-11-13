@@ -1,6 +1,6 @@
 const { ipcMain } = require('electron');
 const authService = require('../services/authService');
-// ELIMINADA la importación aquí: const participationTypeService = require('../services/participationTypeService'); 
+// ELIMINADA: const participationTypeService = require('../services/participationTypeService');
 
 function registerAuthHandlers() {
   // Registrar usuario
@@ -17,7 +17,7 @@ function registerAuthHandlers() {
         console.log('📋 Creando tipos de participación por defecto para userId:', result.user.id);
         
         try {
-          // CORRECCIÓN CRÍTICA: Importar el servicio aquí para romper la dependencia circular
+          // CORRECCIÓN: Importar el servicio AQUÍ rompe la dependencia circular
           const participationTypeService = require('../services/participationTypeService');
           
           const typesResult = await participationTypeService.createDefaultTypes(result.user.id);
@@ -35,8 +35,6 @@ function registerAuthHandlers() {
     }
   });
 
-  // ... (otros handlers se mantienen)
-
   // Iniciar sesión
   ipcMain.handle('auth:login', async (event, { username, password }) => {
     try {
@@ -46,8 +44,46 @@ function registerAuthHandlers() {
       return { success: false, error: 'Error al iniciar sesión' };
     }
   });
-  
-  // ... (el resto de los handlers de autenticación)
+
+  // Obtener usuario actual
+  ipcMain.handle('auth:getCurrentUser', async (event, { token }) => {
+    try {
+      return authService.getCurrentUser(token);
+    } catch (error) {
+      console.error('Error en IPC auth:getCurrentUser:', error);
+      return { success: false, error: 'Error al obtener usuario actual' };
+    }
+  });
+
+  // Verificar token
+  ipcMain.handle('auth:verifyToken', async (event, { token }) => {
+    try {
+      return authService.verifyToken(token);
+    } catch (error) {
+      console.error('Error en IPC auth:verifyToken:', error);
+      return { success: false, error: 'Error al verificar token' };
+    }
+  });
+
+  // Cambiar contraseña
+  ipcMain.handle('auth:changePassword', async (event, { userId, currentPassword, newPassword, confirmNewPassword }) => {
+    try {
+      return await authService.changePassword(userId, currentPassword, newPassword, confirmNewPassword);
+    } catch (error) {
+      console.error('Error en IPC auth:changePassword:', error);
+      return { success: false, error: 'Error al cambiar contraseña' };
+    }
+  });
+
+  // Cerrar sesión
+  ipcMain.handle('auth:logout', async (event, { username }) => {
+    try {
+      return authService.logout(username);
+    } catch (error) {
+      console.error('Error en IPC auth:logout:', error);
+      return { success: true }; // No fallar el logout
+    }
+  });
 
   console.log('✅ Auth handlers registrados');
 }

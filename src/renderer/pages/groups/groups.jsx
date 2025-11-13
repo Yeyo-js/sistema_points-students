@@ -9,12 +9,12 @@ import Label from '../../components/atoms/label';
 import SubgroupForm from '../../components/organisms/subgroupForm/subgroupForm';
 import ManualGroupForm from '../../components/organisms/manualGroupForm/manualGroupForm';
 import GroupPointsForm from '../../components/organisms/groupPointsForm/groupPointsForm';
-import FormField from '../../components/molecules/formField/formField'; // <-- CORRECCIÓN: IMPORTE AÑADIDO
+import FormField from '../../components/molecules/formField/formField'; // Importación para el modal de edición
 import { groupService, courseService } from '../../services';
 import { useAuth } from '../../context/authContext';
 import './groups.css';
 
-// Componente Auxiliar para edición de nombre de grupo General/Independiente
+// (Componente GroupEditForm se mantiene como en la respuesta anterior)
 const GroupEditForm = ({ group, onSuccess, onCancel, updateGroupHandler }) => {
   const [name, setName] = useState(group.name);
   const [loading, setLoading] = useState(false);
@@ -31,7 +31,6 @@ const GroupEditForm = ({ group, onSuccess, onCancel, updateGroupHandler }) => {
     setError('');
 
     try {
-      // Llamar a la función de actualización pasada por props
       const result = await updateGroupHandler(group.id, { name: name.trim() });
       if (result.success) {
         onSuccess();
@@ -95,6 +94,7 @@ const GroupEditForm = ({ group, onSuccess, onCancel, updateGroupHandler }) => {
   );
 };
 
+
 const GroupsPage = () => {
   const { user } = useAuth();
   const [courses, setCourses] = useState([]);
@@ -107,7 +107,7 @@ const GroupsPage = () => {
   const [showManualModal, setShowManualModal] = useState(false);
   const [showSubgroupModal, setShowSubgroupModal] = useState(false);
   const [showPointsModal, setShowPointsModal] = useState(false);
-  const [showNameEditModal, setShowNameEditModal] = useState(false); // <-- NUEVO ESTADO
+  const [showNameEditModal, setShowNameEditModal] = useState(false); 
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [selectedParentGroup, setSelectedParentGroup] = useState(null);
 
@@ -125,24 +125,19 @@ const GroupsPage = () => {
     setLoading(true);
     try {
       const result = await courseService.getCoursesByUser(user.id);
-      if (result.success) {
-        const newCourses = result.courses || [];
-        setCourses(newCourses);
-        
-        // **CORRECCIÓN CRÍTICA DE ESTADO ZOMBIE:**
-        const currentSelectedCourseId = selectedCourseId;
-        const exists = newCourses.some(c => c.id === currentSelectedCourseId);
+      const newCourses = result.success ? (result.courses || []) : [];
+      setCourses(newCourses);
+      
+      // **CORRECCIÓN CRÍTICA DE ESTADO ZOMBIE:**
+      let currentId = selectedCourseId;
+      const exists = newCourses.some(c => c.id === currentId);
 
-        if (currentSelectedCourseId && exists) {
-            // Mantener ID
-        } else if (newCourses.length > 0) {
-          setSelectedCourseId(newCourses[0].id);
-        } else {
-          setSelectedCourseId('');
-          setGroups([]);
-        }
+      if (currentId && exists) {
+          // Mantener ID
+          await loadCourseGroups(currentId);
+      } else if (newCourses.length > 0) {
+        setSelectedCourseId(newCourses[0].id);
       } else {
-        setCourses([]);
         setSelectedCourseId('');
         setGroups([]);
       }
@@ -184,7 +179,7 @@ const GroupsPage = () => {
       return;
     }
 
-    setLoading(true);
+    setLoading(true); // Usar el loading principal
     try {
       const result = await groupService.createFromCourse(selectedCourseId, user.id);
 
@@ -210,13 +205,11 @@ const GroupsPage = () => {
 
   const handleEditGroup = (group) => {
     if (group.type === 'subgroup') {
-      // Cargar el grupo padre
       const parentGroup = groups.find(g => g.id === group.parent_group_id);
       setSelectedParentGroup(parentGroup);
       setSelectedGroup(group);
       setShowSubgroupModal(true);
     } else {
-      // Editar nombre de grupo general o independiente usando el nuevo modal
       setSelectedGroup(group);
       setShowNameEditModal(true);
     }
@@ -225,7 +218,6 @@ const GroupsPage = () => {
   const handleUpdateGroup = async (groupId, updateData) => {
     try {
       const result = await groupService.update(groupId, updateData, user.id);
-
       if (result.success) {
         return { success: true };
       } else {
@@ -241,10 +233,11 @@ const GroupsPage = () => {
     if (!window.confirm(`¿Estás seguro de eliminar el grupo "${group.name}"?`)) {
       return;
     }
+    
+    setLoading(true); // Usar el loading principal
 
     try {
       const result = await groupService.delete(group.id, user.id);
-
       if (result.success) {
         await loadCourseGroups(selectedCourseId);
       } else {
@@ -253,6 +246,8 @@ const GroupsPage = () => {
     } catch (error) {
       console.error('Error:', error);
       alert('Error al eliminar grupo');
+    } finally {
+        setLoading(false);
     }
   };
 
@@ -289,7 +284,8 @@ const GroupsPage = () => {
     setSelectedGroup(null);
   };
 
-  const selectedCourse = courses.find(c => c.id === selectedCourseId);
+  // BLINDAJE DE RENDERIZADO
+  const selectedCourse = courses.find(c => c.id === selectedCourseId) || null;
   const courseOptions = courses.map(course => ({
     value: course.id,
     label: `${course.name} - ${course.level}`
@@ -525,11 +521,13 @@ const GroupsPage = () => {
           title="Crear Grupo Independiente"
           size="large"
         >
-          <ManualGroupForm
-            userId={user.id}
-            onSuccess={handleManualFormSuccess}
-            onCancel={() => setShowManualModal(false)}
-          />
+          {showManualModal && (
+            <ManualGroupForm
+              userId={user.id}
+              onSuccess={handleManualFormSuccess}
+              onCancel={() => setShowManualModal(false)}
+            />
+          )}
         </Modal>
 
         {/* Modal de subgrupo */}
@@ -543,7 +541,7 @@ const GroupsPage = () => {
           title={selectedGroup ? 'Editar Subgrupo' : 'Crear Subgrupo'}
           size="large"
         >
-          {selectedParentGroup && (
+          {showSubgroupModal && selectedParentGroup && (
             <SubgroupForm
               parentGroup={selectedParentGroup}
               subgroup={selectedGroup}
@@ -568,7 +566,7 @@ const GroupsPage = () => {
           title="Calificar Grupo"
           size="medium"
         >
-          {selectedGroup && (
+          {showPointsModal && selectedGroup && (
             <GroupPointsForm
               group={selectedGroup}
               userId={user.id}
@@ -588,7 +586,7 @@ const GroupsPage = () => {
           title="Editar Nombre del Grupo"
           size="small"
         >
-          {selectedGroup && (
+          {showNameEditModal && selectedGroup && (
             <GroupEditForm
               group={selectedGroup}
               onSuccess={handleNameEditSuccess}

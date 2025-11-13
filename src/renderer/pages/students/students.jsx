@@ -29,9 +29,10 @@ const StudentsPage = () => {
 
   useEffect(() => {
     loadCourses();
-  }, []);
+  }, []); // Carga cursos solo una vez al montar
 
   useEffect(() => {
+    // Carga estudiantes CADA VEZ que el ID seleccionado cambia
     if (selectedCourseId) {
       loadStudents(selectedCourseId);
     }
@@ -41,32 +42,32 @@ const StudentsPage = () => {
     setLoading(true);
     try {
       const result = await courseService.getCoursesByUser(user.id);
-      if (result.success) {
-        const newCourses = result.courses || [];
-        setCourses(newCourses);
-        
-        // **CORRECCIÓN CRÍTICA DE ESTADO ZOMBIE:**
-        const currentSelectedCourseId = selectedCourseId;
-        const exists = newCourses.some(c => c.id === currentSelectedCourseId);
+      const newCourses = result.success ? (result.courses || []) : [];
+      setCourses(newCourses);
 
-        if (currentSelectedCourseId && exists) {
-            // Mantener ID
-        } else if (newCourses.length > 0) {
-          setSelectedCourseId(newCourses[0].id);
-        } else {
-          setSelectedCourseId('');
-          setStudents([]); 
-        }
+      // **CORRECCIÓN CRÍTICA DE ESTADO ZOMBIE:**
+      let currentId = selectedCourseId; // Obtenemos el ID del estado
+      
+      // Verificar si este ID todavía existe en la nueva lista de cursos.
+      const exists = newCourses.some(c => c.id === currentId);
+
+      if (currentId && exists) {
+          // Si el ID aún existe, mantenerlo (no hacer nada).
+          // El useEffect [selectedCourseId] se asegurará de que loadStudents se llame si es necesario.
+      } else if (newCourses.length > 0) {
+        // Si el ID fue eliminado o estaba vacío, seleccionar el primer curso.
+        setSelectedCourseId(newCourses[0].id);
       } else {
-        setCourses([]);
+        // Si no hay cursos, limpiar todo para evitar referencias a null.
         setSelectedCourseId('');
-        setStudents([]);
+        setStudents([]); 
       }
     } catch (error) {
-      console.error('Error al cargar cursos:', error);
-      setCourses([]);
-      setSelectedCourseId('');
-      setStudents([]);
+       console.error('Error al cargar cursos:', error);
+       // Limpiar en caso de crash
+       setCourses([]);
+       setSelectedCourseId('');
+       setStudents([]);
     } finally {
       setLoading(false);
     }
@@ -119,13 +120,15 @@ const StudentsPage = () => {
   };
 
   const handleDeleteStudent = async (studentId) => {
-    setLoading(true); // <--- INICIA LOADING para deshabilitar inputs
+    // Usamos 'loadingStudents' para el spinner de la tabla, 
+    // 'loading' es para la carga de la página (cursos)
+    setLoadingStudents(true); 
     try {
-      // 1. Intento normal de eliminación
+      // 1. Intentamos la eliminación normal
       let result = await studentService.deleteStudent(studentId);
 
       if (result.success) {
-        // Éxito
+        // Éxito: el estudiante no tenía puntos
         await loadStudents(selectedCourseId);
         alert('Estudiante eliminado exitosamente!');
       } else if (result.requiresConfirmation) {
@@ -150,9 +153,10 @@ const StudentsPage = () => {
       alert('Error de conexión al eliminar estudiante.');
     } finally {
       // CRÍTICO: Garantiza que el estado se resetee siempre.
-      setLoading(false); 
+      setLoadingStudents(false); 
     }
   };
+
 
   const handleFormSuccess = async () => {
     setIsModalOpen(false);
@@ -174,7 +178,7 @@ const StudentsPage = () => {
     const course = courses.find(c => c.id === parseInt(selectedCourseId));
     if (!course) return;
 
-    setLoading(true);
+    setLoading(true); // Usamos el loading general para la exportación
     try {
       const result = await excelService.exportStudents(course.id, course.name);
 

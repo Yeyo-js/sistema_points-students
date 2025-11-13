@@ -47,33 +47,25 @@ const PointsPage = () => {
     setLoading(true);
     try {
       const result = await courseService.getCoursesByUser(user.id);
-      if (result.success) {
-        const newCourses = result.courses || [];
-        setCourses(newCourses);
-        
-        // **CORRECCIÓN CRÍTICA DE ESTADO ZOMBIE:**
-        const currentSelectedCourseId = selectedCourseId;
-        const exists = newCourses.some(c => c.id === currentSelectedCourseId);
+      const newCourses = result.success ? (result.courses || []) : [];
+      setCourses(newCourses);
+      
+      // **CORRECCIÓN CRÍTICA DE ESTADO ZOMBIE:**
+      let currentId = selectedCourseId;
+      const exists = newCourses.some(c => c.id === currentId);
 
-        if (currentSelectedCourseId && exists) {
-            // Si el ID aún existe, mantenerlo (no hacer nada).
-        } else if (newCourses.length > 0) {
-          // Si el ID fue eliminado o estaba vacío, seleccionar el primer curso.
-          setSelectedCourseId(newCourses[0].id);
-          setFilterType('course');
-        } else {
-          // Si no hay cursos, limpiar todo para evitar referencias a null.
-          setSelectedCourseId('');
-          setStudents([]); 
-          setPoints([]);
-          setFilterType('all');
-        }
+      if (currentId && exists) {
+          // Mantener ID
+          // (No es necesario llamar a loadStudents/loadCoursePoints aquí, 
+          // el useEffect[selectedCourseId] lo hará)
+      } else if (newCourses.length > 0) {
+        setSelectedCourseId(newCourses[0].id);
+        setFilterType('course'); // Asegurar que el filtro sea correcto
       } else {
-        // Limpiar en caso de error
-        setCourses([]);
         setSelectedCourseId('');
         setStudents([]);
         setPoints([]);
+        setFilterType('all');
       }
     } catch (error) {
       console.error('Error al cargar cursos:', error);
@@ -82,12 +74,11 @@ const PointsPage = () => {
       setStudents([]);
       setPoints([]);
     } finally {
-      setLoading(false);
+      setLoading(false); // <-- Esto desbloquea los inputs
     }
   };
 
   const loadStudents = async (courseId) => {
-    // ... (esta función ya es correcta)
     setLoadingStudents(true);
     try {
       const result = await studentService.getStudentsByCourse(courseId);
@@ -190,6 +181,8 @@ const PointsPage = () => {
     if (!window.confirm('¿Estás seguro de eliminar este registro de puntos?')) {
       return;
     }
+    
+    setLoadingPoints(true); // Usar el spinner de la tabla
 
     try {
       const result = await pointService.deletePoint(pointId);
@@ -208,18 +201,17 @@ const PointsPage = () => {
     } catch (error) {
       console.error('Error al eliminar punto:', error);
       alert('Error al eliminar punto');
+    } finally {
+        setLoadingPoints(false); // Asegurar que el spinner de la tabla se detenga
     }
   };
 
-  const handleFormSuccess = async (updateResult) => { // AHORA RECIBE EL RESULTADO
+  const handleFormSuccess = async (updateResult) => { 
     setIsModalOpen(false);
     setSelectedPoint(null);
     
-    // Recargar estudiantes primero para actualizar totales y forzar recálculo de selectedStudent
-    // Este re-fetch es necesario para que el nuevo estado de 'students' actualice la variable derivada 'selectedStudent'
     await loadStudents(selectedCourseId); 
     
-    // Luego recargar la lista según el filtro actual
     if (selectedStudentId) {
       await loadStudentPoints(parseInt(selectedStudentId));
     } else if (selectedCourseId) {
@@ -235,13 +227,11 @@ const PointsPage = () => {
   const handleBulkFormSuccess = async ({ successCount, failCount }) => {
     setIsBulkModalOpen(false);
     
-    // Recargar estudiantes y puntos
     await loadStudents(selectedCourseId);
     if (filterType === 'course' && selectedCourseId) {
       await loadCoursePoints(selectedCourseId);
     }
     
-    // Mostrar mensaje de éxito
     alert(`✅ Puntos asignados a ${successCount} estudiante(s)${failCount > 0 ? `\n⚠️ ${failCount} falló(s)` : ''}`);
   };
 
@@ -258,7 +248,7 @@ const PointsPage = () => {
     const course = courses.find(c => c.id === parseInt(selectedCourseId));
     if (!course) return;
 
-    setLoading(true);
+    setLoading(true); // Usar el loading principal de la página
     try {
       const result = await excelService.exportPoints(course.id, course.name);
 
@@ -275,9 +265,9 @@ const PointsPage = () => {
     }
   };
 
-
-  const selectedCourse = courses.find(c => c.id === selectedCourseId);
-  const selectedStudent = students.find(s => s.id === parseInt(selectedStudentId));
+  // BLINDAJE DE RENDERIZADO: Asegurarse de que no sea undefined si el ID es zombie
+  const selectedCourse = courses.find(c => c.id === selectedCourseId) || null;
+  const selectedStudent = students.find(s => s.id === parseInt(selectedStudentId)) || null;
 
   const courseOptions = courses.map(course => ({
     value: course.id,
@@ -372,7 +362,7 @@ const PointsPage = () => {
           )}
         </div>
 
-        {/* Información del curso/estudiante seleccionado */}
+        {/* Información del curso/estudiante seleccionado (BLINDADO) */}
         {selectedCourse && (
           <Card variant="outlined" padding="medium" className="points-page__info-card">
             <div className="points-page__info-content">
@@ -536,13 +526,16 @@ const PointsPage = () => {
           title={selectedPoint ? 'Editar Puntos' : 'Asignar Puntos'}
           size="medium"
         >
-          <PointForm
-            point={selectedPoint}
-            studentId={parseInt(selectedStudentId)}
-            studentName={selectedStudent?.full_name || ''}
-            onSuccess={handleFormSuccess}
-            onCancel={handleCloseModal}
-          />
+          {/* Asegurarse de que el modal no intente renderizar si selectedStudentId es inválido */}
+          {(isModalOpen && (selectedStudentId || isEditMode)) && (
+            <PointForm
+              point={selectedPoint}
+              studentId={parseInt(selectedStudentId)}
+              studentName={selectedStudent?.full_name || (selectedPoint ? 'Cargando...' : '')}
+              onSuccess={handleFormSuccess}
+              onCancel={handleCloseModal}
+            />
+          )}
         </Modal>
 
         {/* Modal para asignación masiva */}
@@ -552,13 +545,15 @@ const PointsPage = () => {
           title="Asignar Puntos a Todos los Estudiantes"
           size="medium"
         >
-          <BulkPointForm
-            students={students}
-            courseId={selectedCourseId}
-            courseName={selectedCourse?.name || ''}
-            onSuccess={handleBulkFormSuccess}
-            onCancel={handleCloseBulkModal}
-          />
+          {isBulkModalOpen && (
+            <BulkPointForm
+              students={students}
+              courseId={selectedCourseId}
+              courseName={selectedCourse?.name || ''}
+              onSuccess={handleBulkFormSuccess}
+              onCancel={handleCloseBulkModal}
+            />
+          )}
         </Modal>
       </div>
     </DashboardLayout>
