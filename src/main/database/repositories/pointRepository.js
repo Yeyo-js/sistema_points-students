@@ -35,7 +35,7 @@ class PointRepository {
     }
   }
 
-  // READ
+  // READ (rest of methods unchanged)
   findById(pointId) {
     try {
       const dbInstance = this.getDbInstance();
@@ -80,9 +80,6 @@ class PointRepository {
         ORDER BY p.created_at DESC
       `;
 
-      // Validar y sanitizar limit antes de usarlo en la query
-      // Nota: SQL.js no soporta placeholders para LIMIT, por lo que se usa interpolación
-      // pero con validación estricta para prevenir SQL injection
       if (limit) {
         const parsedLimit = parseInt(limit, 10);
         if (!Number.isInteger(parsedLimit) || parsedLimit <= 0) {
@@ -119,9 +116,8 @@ class PointRepository {
       if (!result.length || !result[0].values.length) {
         return 0;
       }
-      
-      // Retorna la suma total de puntos (índice 0 de la primera fila)
-      return result[0].values[0][0]; 
+
+      return result[0].values[0][0];
     } catch (error) {
       console.error("Error en PointRepository.countByStudent:", error);
       throw error;
@@ -196,9 +192,8 @@ class PointRepository {
   update(participationTypeId, pointsValue, reason, pointId) {
     try {
       const dbInstance = this.getDbInstance();
-      const db = dbInstance.getDb(); // <-- Obtener el objeto de BD directo
+      const db = dbInstance.getDb(); 
 
-      // Ejecutar la actualización en la base de datos
       db.run(
         `UPDATE points 
         SET participation_type_id = ?, points_value = ?, reason = ?
@@ -206,7 +201,6 @@ class PointRepository {
         [participationTypeId, pointsValue, reason, pointId] 
       );
       
-      // CORRECCIÓN CRÍTICA: Guardar explícitamente en el disco
       dbInstance.saveDatabase();
 
       return { changes: 1 };
@@ -220,11 +214,10 @@ class PointRepository {
   delete(pointId) {
     try {
       const dbInstance = this.getDbInstance();
-      const db = dbInstance.getDb(); // <-- Obtener el objeto de BD directo
+      const db = dbInstance.getDb(); 
 
       db.run("DELETE FROM points WHERE id = ?", [pointId]);
       
-      // CORRECCIÓN CRÍTICA: Guardar explícitamente en el disco
       dbInstance.saveDatabase();
 
       return { changes: 1 };
@@ -234,18 +227,36 @@ class PointRepository {
     }
   }
 
-  // Calcular totales de un estudiante
+  // Nuevo método auxiliar para obtener la suma máxima de puntos en un curso
+  getMaxTotalPointsInCourse(courseId) {
+    try {
+        const dbInstance = this.getDbInstance();
+        // Obtener el máximo 'total_points' de la tabla student_totals para el curso.
+        const query = `
+            SELECT COALESCE(MAX(total_points), 0) as max_points
+            FROM student_totals
+            WHERE course_id = ?
+        `;
+        const result = dbInstance.getDb().exec(query, [courseId]);
+        
+        if (!result.length || !result[0].values.length) {
+            return 0;
+        }
+        return result[0].values[0][0] || 0; 
+    } catch (error) {
+        console.error("Error en PointRepository.getMaxTotalPointsInCourse:", error);
+        throw error;
+    }
+  }
+
+  // Calcular totales de un estudiante (Simplificado para solo sumar y contar)
   calculateStudentTotals(studentId) {
     try {
       const dbInstance = this.getDbInstance();
       const result = dbInstance.getDb().exec(
         `SELECT 
           COALESCE(SUM(points_value), 0) as total_points,
-          COUNT(*) as participation_count,
-          CASE 
-            WHEN COUNT(*) > 0 THEN CAST(SUM(points_value) AS REAL) / COUNT(*)
-            ELSE 0 
-          END as average_points
+          COUNT(*) as participation_count
         FROM points
         WHERE student_id = ?`,
         [studentId]
@@ -255,7 +266,6 @@ class PointRepository {
         return {
           total_points: 0,
           participation_count: 0,
-          average_points: 0,
         };
       }
 
@@ -266,14 +276,54 @@ class PointRepository {
     }
   }
 
-  // Actualizar totales en student_totals
+  // Actualizar totales en student_totals (NUEVA LÓGICA DE PROMEDIO)
   updateStudentTotals(studentId) {
     try {
       const totals = this.calculateStudentTotals(studentId);
-      const roundedAverage = Math.round(totals.average_points);
-
       const dbInstance = this.getDbInstance();
-      const db = dbInstance.getDb(); // <-- Obtener el objeto de BD directo
+      const db = dbInstance.getDb();
+      
+      let courseId = null;
+      let totalPoints = totals.total_points;
+      let averagePoints = 0;
+      let roundedAverage = 0;
+      
+      // 1. Obtener Course ID
+      const studentResult = db.exec("SELECT course_id FROM students WHERE id = ?", [studentId]);
+      if (studentResult.length && studentResult[0].values.length) {
+          courseId = studentResult[0].values[0][0];
+      }
+      
+      if (!courseId) {
+          // No se puede calcular el promedio si no hay ID de curso.
+          console.warn(`No se pudo encontrar el ID del curso para el estudiante ${studentId}.`);
+          // Si el estudiante no tiene curso, los puntos se guardarán, pero el promedio será 0.
+      } else {
+          // 2. Obtener Max Total Points en el curso
+          // NOTA: El valor de maxPoints puede estar desactualizado en este momento, 
+          // pero se actualizará en la próxima operación si este estudiante tiene un nuevo máximo.
+          const maxPoints = this.getMaxTotalPointsInCourse(courseId);
+          
+          // 3. Aplicar NUEVA LÓGICA DE PROMEDIO: (Puntos Estudiante / Puntos Máximos del Curso) * 20
+          if (maxPoints > 0) {
+              averagePoints = (totalPoints / maxPoints) * 20;
+              
+              // Limitar la nota máxima a 20.
+              if (averagePoints > 20) averagePoints = 20; 
+              
+              roundedAverage = Math.round(averagePoints);
+          } else {
+              // Si el estudiante es el primero o el único con puntos, su puntaje es 20/20.
+              if (totalPoints > 0) {
+                 averagePoints = 20;
+                 roundedAverage = 20;
+              }
+              // Si totalPoints es 0, el promedio es 0, lo cual es correcto.
+          }
+      }
+      
+      
+      // 4. Actualizar/Insertar en student_totals
 
       // Verificar si ya existe un registro
       const exists = db.exec(
@@ -285,7 +335,7 @@ class PointRepository {
 
       if (count > 0) {
         // Actualizar
-        db.run(
+        dbInstance.run(
           `UPDATE student_totals 
           SET 
             total_points = ?,
@@ -295,37 +345,30 @@ class PointRepository {
             last_updated = CURRENT_TIMESTAMP
           WHERE student_id = ?`,
           [
-            totals.total_points,
+            totalPoints,
             totals.participation_count,
-            totals.average_points,
+            averagePoints, // Usamos el nuevo cálculo
             roundedAverage,
             studentId,
           ]
         );
-      } else {
-        // Insertar (obtener course_id del estudiante)
-        const studentResult = db.exec("SELECT course_id FROM students WHERE id = ?", [studentId]);
-
-        if (studentResult.length && studentResult[0].values.length) {
-          const courseId = studentResult[0].values[0][0];
-
-          db.run(
-            `INSERT INTO student_totals 
-            (student_id, course_id, total_points, participation_count, average_points, rounded_average) 
-            VALUES (?, ?, ?, ?, ?, ?)`,
-            [
-              studentId,
-              courseId,
-              totals.total_points,
-              totals.participation_count,
-              totals.average_points,
-              roundedAverage,
-            ]
-          );
-        }
+      } else if (courseId) {
+        // Insertar (solo si hay courseId)
+        dbInstance.run(
+          `INSERT INTO student_totals 
+          (student_id, course_id, total_points, participation_count, average_points, rounded_average) 
+          VALUES (?, ?, ?, ?, ?, ?)`,
+          [
+            studentId,
+            courseId,
+            totalPoints,
+            totals.participation_count,
+            averagePoints, // Usamos el nuevo cálculo
+            roundedAverage,
+          ]
+        );
       }
 
-      // CORRECCIÓN FINAL: Guardar los cambios realizados en el disco
       dbInstance.saveDatabase(); 
 
       return { changes: 1 };
@@ -336,8 +379,6 @@ class PointRepository {
   }
 
   // Obtener historial agrupado por fecha (para gráficos)
-  // ... (código se mantiene)
-
   getPointsHistory(studentId) {
     try {
       const dbInstance = this.getDbInstance();
@@ -357,13 +398,47 @@ class PointRepository {
         return [];
       }
 
-      return this._rowsToObjects(result[0]);
+      // 1. Obtener la información del estudiante para el cálculo acumulado
+      let student = null;
+      const studentInfo = dbInstance.getDb().exec("SELECT course_id FROM students WHERE id = ?", [studentId]);
+      const courseId = studentInfo.length && studentInfo[0].values.length ? studentInfo[0].values[0][0] : null;
+
+      // 2. Obtener todos los puntos de la historia (sin agrupar)
+      const allPoints = this.findByStudent(studentId, null);
+      
+      // 3. Obtener el puntaje máximo del curso (para el cálculo del acumulado en 20)
+      const maxPoints = courseId ? this.getMaxTotalPointsInCourse(courseId) : 0;
+      
+      // 4. Calcular acumulados y notas finales
+      let cumulativePoints = 0;
+      const history = allPoints.reverse().map(point => {
+        cumulativePoints += point.points_value;
+
+        let finalGrade = 0;
+        if (maxPoints > 0) {
+            finalGrade = (cumulativePoints / maxPoints) * 20;
+            if (finalGrade > 20) finalGrade = 20;
+        } else if (cumulativePoints > 0) {
+             // Si no hay maxPoints, pero tiene puntos, se asume 20
+             finalGrade = 20; 
+        }
+
+        return {
+          date: point.created_at,
+          cumulativePoints: cumulativePoints,
+          dayPoints: point.points_value,
+          participationType: point.participation_type_name,
+          finalGrade: Math.round(finalGrade) // Se podría usar para mostrar la evolución
+        };
+      }).reverse(); // Revertir para que el orden sea de nuevo DESC
+
+      return history; // Devuelve la historia para el gráfico
     } catch (error) {
       console.error("Error en PointRepository.getPointsHistory:", error);
       throw error;
     }
   }
-
+  
   // Helpers
   _rowToObject(result) {
     if (!result.values || !result.values.length) {

@@ -21,8 +21,9 @@ class ParticipationTypeService {
   async getParticipationTypes() {
     const user = authService.getUser();
     
-    if (!user) {
-      return { success: false, error: 'No hay sesión activa' };
+    // CORRECCIÓN CRÍTICA: Bloquear la llamada al backend si no hay sesión activa.
+    if (!user || !user.id) { 
+      return { success: true, participationTypes: [], message: 'No hay sesión activa. Lista vacía.' };
     }
 
     return await ipcService.invoke('participationType:getByUser', {

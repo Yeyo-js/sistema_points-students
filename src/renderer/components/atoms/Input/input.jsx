@@ -27,10 +27,11 @@ const Input = ({
     className
   ].filter(Boolean).join(' ');
 
-  // CORRECCIÓN CRÍTICA: Coerción defensiva del valor. 
-  // Asegura que si value es null o undefined, el input reciba una cadena vacía (''),
-  // previniendo el bug de inputs incontrolables en React.
-  const finalValue = value === null || value === undefined ? '' : value;
+  // CORRECCIÓN DEFINITIVA: 
+  // 1. Coerción a cadena vacía si es null/undefined.
+  // 2. Coerción explícita a String() para valores numéricos (como 0 o list_number) 
+  //    que pueden causar el bug en inputs controlados.
+  const finalValue = value === null || value === undefined ? '' : String(value);
 
   return (
     <div className="input-wrapper">
@@ -38,7 +39,8 @@ const Input = ({
       <input
         type={type}
         name={name}
-        value={finalValue} // Usamos el valor coercido
+        // Usa el valor corregido y forzado a String
+        value={finalValue} 
         onChange={onChange}
         onBlur={onBlur}
         placeholder={placeholder}
@@ -57,7 +59,8 @@ const Input = ({
 Input.propTypes = {
   type: PropTypes.string,
   name: PropTypes.string,
-  value: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  // Permite string o number (incluido el valor de 0)
+  value: PropTypes.oneOfType([PropTypes.string, PropTypes.number]), 
   onChange: PropTypes.func,
   onBlur: PropTypes.func,
   placeholder: PropTypes.string,

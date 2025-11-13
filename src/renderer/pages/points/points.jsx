@@ -76,20 +76,35 @@ const PointsPage = () => {
     }
   };
 
-  const loadCoursePoints = async (courseId) => {
-    setLoadingPoints(true);
+  const loadCoursePoints = async () => {
+    setLoading(true);
     try {
-      const result = await pointService.getCourseHistory(courseId, 50);
+      const result = await courseService.getCoursesByUser(user.id);
       if (result.success) {
-        setPoints(result.points || []);
-      } else {
-        setPoints([]);
+        const newCourses = result.courses || [];
+        setCourses(newCourses);
+        
+        // **CORRECCIÓN CRÍTICA DE ESTADO HUÉRFANO:**
+        // 1. Obtener el ID seleccionado actualmente.
+        const currentSelectedCourseId = selectedCourseId;
+        // 2. Verificar si este ID todavía existe en la nueva lista de cursos.
+        const exists = newCourses.some(c => c.id === currentSelectedCourseId);
+
+        if (currentSelectedCourseId && exists) {
+            // Si el ID aún existe, mantenerlo (no hacer nada).
+        } else if (newCourses.length > 0) {
+          // Si el ID fue eliminado o estaba vacío, seleccionar el primer curso.
+          setSelectedCourseId(newCourses[0].id);
+        } else {
+          // Si no hay cursos, limpiar todo para evitar referencias a null.
+          setSelectedCourseId('');
+          setStudents([]); 
+        }
       }
     } catch (error) {
-      console.error('Error al cargar puntos del curso:', error);
-      setPoints([]);
+      console.error('Error al cargar cursos:', error);
     } finally {
-      setLoadingPoints(false);
+      setLoading(false);
     }
   };
 
@@ -190,9 +205,9 @@ const PointsPage = () => {
     await loadStudents(selectedCourseId); 
     
     // Luego recargar la lista según el filtro actual
-    if (filterType === 'student' && selectedStudentId) {
-      await loadStudentPoints(selectedStudentId);
-    } else if (filterType === 'course' && selectedCourseId) {
+    if (selectedStudentId) {
+      await loadStudentPoints(parseInt(selectedStudentId));
+    } else if (selectedCourseId) {
       await loadCoursePoints(selectedCourseId);
     }
   };
