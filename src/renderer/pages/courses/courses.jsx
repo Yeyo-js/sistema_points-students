@@ -50,16 +50,22 @@ const CoursesPage = () => {
       return;
     }
 
+    setLoading(true); // Inputs deshabilitados
     try {
       const result = await courseService.deleteCourse(courseId, user.id);
       if (result.success) {
-        await loadCourses();
+        // Esperamos a que la recarga de cursos termine
+        await loadCourses(); 
       } else {
         alert(result.message || result.error || 'Error al eliminar curso');
+        setLoading(false)
       }
     } catch (error) {
       console.error('Error al eliminar curso:', error);
       alert('Error al eliminar curso');
+    } finally {
+      // CORRECCIÓN: Asegura que los inputs se habiliten incluso si loadCourses() falla
+      setLoading(false); 
     }
   };
 

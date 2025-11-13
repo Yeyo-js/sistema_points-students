@@ -45,25 +45,28 @@ const StudentsPage = () => {
         const newCourses = result.courses || [];
         setCourses(newCourses);
         
-        // **CORRECCIÓN CRÍTICA DE ESTADO HUÉRFANO:**
-        // 1. Obtener el ID seleccionado actualmente.
+        // **CORRECCIÓN CRÍTICA DE ESTADO ZOMBIE:**
         const currentSelectedCourseId = selectedCourseId;
-        // 2. Verificar si este ID todavía existe en la nueva lista de cursos.
         const exists = newCourses.some(c => c.id === currentSelectedCourseId);
 
         if (currentSelectedCourseId && exists) {
-            // Si el ID aún existe, mantenerlo (no hacer nada).
+            // Mantener ID
         } else if (newCourses.length > 0) {
-          // Si el ID fue eliminado o estaba vacío, seleccionar el primer curso.
           setSelectedCourseId(newCourses[0].id);
         } else {
-          // Si no hay cursos, limpiar todo para evitar referencias a null.
           setSelectedCourseId('');
           setStudents([]); 
         }
+      } else {
+        setCourses([]);
+        setSelectedCourseId('');
+        setStudents([]);
       }
     } catch (error) {
       console.error('Error al cargar cursos:', error);
+      setCourses([]);
+      setSelectedCourseId('');
+      setStudents([]);
     } finally {
       setLoading(false);
     }
@@ -116,40 +119,38 @@ const StudentsPage = () => {
   };
 
   const handleDeleteStudent = async (studentId) => {
+    setLoading(true); // <--- INICIA LOADING para deshabilitar inputs
     try {
-      // 1. Intentamos la eliminación normal. El servicio de backend nos indicará si tiene puntos.
+      // 1. Intento normal de eliminación
       let result = await studentService.deleteStudent(studentId);
 
       if (result.success) {
-        // Éxito: el estudiante no tenía puntos o la eliminación normal fue suficiente.
+        // Éxito
         await loadStudents(selectedCourseId);
         alert('Estudiante eliminado exitosamente!');
-
       } else if (result.requiresConfirmation) {
-        // Caso: El estudiante tiene puntos y el backend requiere confirmación
-        
-        // Mostrar la confirmación usando el mensaje detallado del backend
+        // 2. Requiere confirmación
         if (window.confirm(result.message)) {
-          
-          // Si el usuario confirma, llamamos al servicio de eliminación forzada
+          // 3. Eliminación forzada
           const forceResult = await studentService.forceDeleteStudent(studentId);
 
           if (forceResult.success) {
             await loadStudents(selectedCourseId);
-            // Si el curso tiene un grupo general, debemos recargarlo en la página de grupos
-            // para actualizar el recuento de estudiantes.
             alert('Estudiante y todos los datos asociados (puntos y grupos) eliminados exitosamente!');
           } else {
             alert(forceResult.error || 'Error al forzar la eliminación del estudiante.');
           }
         }
       } else {
-        // Caso: Error de validación o DB sin requerir confirmación
+        // Error simple
         alert(result.error || 'Error al eliminar estudiante');
       }
     } catch (error) {
       console.error('Error al eliminar estudiante:', error);
       alert('Error de conexión al eliminar estudiante.');
+    } finally {
+      // CRÍTICO: Garantiza que el estado se resetee siempre.
+      setLoading(false); 
     }
   };
 

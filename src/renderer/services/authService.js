@@ -1,6 +1,21 @@
 import ipcService from './ipcService';
 
 class AuthService {
+
+  // CORRECCIÓN: Añadir un constructor para enlazar 'this' a todos los métodos.
+  // Esto garantiza que 'this.getUser' y 'this.getToken' siempre funcionen.
+  constructor() {
+    this.register = this.register.bind(this);
+    this.login = this.login.bind(this);
+    this.getCurrentUser = this.getCurrentUser.bind(this);
+    this.verifyToken = this.verifyToken.bind(this);
+    this.changePassword = this.changePassword.bind(this);
+    this.logout = this.logout.bind(this);
+    this.getToken = this.getToken.bind(this);
+    this.getUser = this.getUser.bind(this);
+    this.isAuthenticated = this.isAuthenticated.bind(this);
+  }
+
   // Registrar usuario
   async register(username, fullName, email, password, confirmPassword) {
     return await ipcService.invoke('auth:register', {
@@ -68,10 +83,14 @@ class AuthService {
 
   // Cerrar sesión
   async logout() {
-    const user = this.getUser();
+    const user = this.getUser(); // 'this' ahora está garantizado
     
-    if (user) {
-      await ipcService.invoke('auth:logout', { username: user.username });
+    try {
+      if (user) {
+        await ipcService.invoke('auth:logout', { username: user.username });
+      }
+    } catch (e) {
+      console.warn("Error al notificar al backend sobre el logout.", e);
     }
 
     localStorage.removeItem('token');

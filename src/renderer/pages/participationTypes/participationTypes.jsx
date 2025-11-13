@@ -49,24 +49,28 @@ const ParticipationTypesPage = () => {
   };
 
   const handleDelete = async (type) => {
-    // Si la eliminación falló por el error de renderizado, este confirm no se ejecutó.
-    // Ahora debería funcionar correctamente.
     if (!window.confirm(`¿Estás seguro de eliminar el tipo "${type.name}"?\n\nSi tiene puntos asignados, no se podrá eliminar.`)) {
       return;
     }
+    
+    setLoading(true); // <--- INICIA LOADING
 
     try {
       const result = await participationTypeService.deleteParticipationType(type.id);
 
       if (result.success) {
         alert('Tipo de participación eliminado exitosamente');
-        loadParticipationTypes();
+        await loadParticipationTypes(); // Esta función ya tiene su propio setLoading(false)
       } else {
         alert(result.error || 'Error al eliminar el tipo de participación');
+        setLoading(false);
       }
     } catch (error) {
       console.error('Error al eliminar tipo:', error);
       alert('Error al eliminar el tipo de participación');
+    } finally {
+        // CORRECCIÓN: Garantiza que el loading se detenga si la lógica falla
+        setLoading(false); 
     }
   };
 

@@ -25,6 +25,8 @@ const FormField = ({
 }) => {
   const isPasswordField = type === 'password';
 
+  const sanitizedValue = (value === null || value === undefined) ? '' : value;
+
   return (
     <div className={`form-field ${className}`}>
       {label && (
@@ -36,7 +38,7 @@ const FormField = ({
       {isPasswordField ? (
         <PasswordInput
           name={name}
-          value={value}
+          value={sanitizedValue}
           onChange={onChange}
           onBlur={onBlur}
           placeholder={placeholder}
@@ -49,7 +51,7 @@ const FormField = ({
         <Input
           type={type}
           name={name}
-          value={value}
+          value={sanitizedValue}
           onChange={onChange}
           onBlur={onBlur}
           placeholder={placeholder}

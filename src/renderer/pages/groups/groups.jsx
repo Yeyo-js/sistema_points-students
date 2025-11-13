@@ -129,25 +129,28 @@ const GroupsPage = () => {
         const newCourses = result.courses || [];
         setCourses(newCourses);
         
-        // **CORRECCIÓN CRÍTICA DE ESTADO HUÉRFANO:**
-        // 1. Obtener el ID seleccionado actualmente.
+        // **CORRECCIÓN CRÍTICA DE ESTADO ZOMBIE:**
         const currentSelectedCourseId = selectedCourseId;
-        // 2. Verificar si este ID todavía existe en la nueva lista de cursos.
         const exists = newCourses.some(c => c.id === currentSelectedCourseId);
 
         if (currentSelectedCourseId && exists) {
-            // Si el ID aún existe, mantenerlo (no hacer nada).
+            // Mantener ID
         } else if (newCourses.length > 0) {
-          // Si el ID fue eliminado o estaba vacío, seleccionar el primer curso.
           setSelectedCourseId(newCourses[0].id);
         } else {
-          // Si no hay cursos, limpiar todo para evitar referencias a null.
           setSelectedCourseId('');
-          setStudents([]); 
+          setGroups([]);
         }
+      } else {
+        setCourses([]);
+        setSelectedCourseId('');
+        setGroups([]);
       }
     } catch (error) {
       console.error('Error al cargar cursos:', error);
+      setCourses([]);
+      setSelectedCourseId('');
+      setGroups([]);
     } finally {
       setLoading(false);
     }

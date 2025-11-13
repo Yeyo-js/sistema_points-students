@@ -34,31 +34,60 @@ const PointsPage = () => {
   useEffect(() => {
     if (selectedCourseId) {
       loadStudents(selectedCourseId);
-      if (filterType === 'course') {
+      // CORRECCIÓN: Asegurarse de que el filterType sea 'course' si no hay estudiante
+      if (filterType === 'course' || !selectedStudentId) {
         loadCoursePoints(selectedCourseId);
       }
     }
-  }, [selectedCourseId]);
+  }, [selectedCourseId]); // Depende solo de selectedCourseId
 
+  
+  // CORRECCIÓN CRÍTICA DE ESTADO ZOMBIE (para el bloqueo de inputs)
   const loadCourses = async () => {
     setLoading(true);
     try {
       const result = await courseService.getCoursesByUser(user.id);
       if (result.success) {
-        setCourses(result.courses || []);
-        if (result.courses && result.courses.length > 0) {
-          setSelectedCourseId(result.courses[0].id);
+        const newCourses = result.courses || [];
+        setCourses(newCourses);
+        
+        // **CORRECCIÓN CRÍTICA DE ESTADO ZOMBIE:**
+        const currentSelectedCourseId = selectedCourseId;
+        const exists = newCourses.some(c => c.id === currentSelectedCourseId);
+
+        if (currentSelectedCourseId && exists) {
+            // Si el ID aún existe, mantenerlo (no hacer nada).
+        } else if (newCourses.length > 0) {
+          // Si el ID fue eliminado o estaba vacío, seleccionar el primer curso.
+          setSelectedCourseId(newCourses[0].id);
           setFilterType('course');
+        } else {
+          // Si no hay cursos, limpiar todo para evitar referencias a null.
+          setSelectedCourseId('');
+          setStudents([]); 
+          setPoints([]);
+          setFilterType('all');
         }
+      } else {
+        // Limpiar en caso de error
+        setCourses([]);
+        setSelectedCourseId('');
+        setStudents([]);
+        setPoints([]);
       }
     } catch (error) {
       console.error('Error al cargar cursos:', error);
+      setCourses([]);
+      setSelectedCourseId('');
+      setStudents([]);
+      setPoints([]);
     } finally {
       setLoading(false);
     }
   };
 
   const loadStudents = async (courseId) => {
+    // ... (esta función ya es correcta)
     setLoadingStudents(true);
     try {
       const result = await studentService.getStudentsByCourse(courseId);
@@ -76,35 +105,21 @@ const PointsPage = () => {
     }
   };
 
-  const loadCoursePoints = async () => {
-    setLoading(true);
+  // RESTAURADA: Esta es la función correcta para cargar puntos del curso
+  const loadCoursePoints = async (courseId) => {
+    setLoadingPoints(true);
     try {
-      const result = await courseService.getCoursesByUser(user.id);
+      const result = await pointService.getCourseHistory(courseId, 50);
       if (result.success) {
-        const newCourses = result.courses || [];
-        setCourses(newCourses);
-        
-        // **CORRECCIÓN CRÍTICA DE ESTADO HUÉRFANO:**
-        // 1. Obtener el ID seleccionado actualmente.
-        const currentSelectedCourseId = selectedCourseId;
-        // 2. Verificar si este ID todavía existe en la nueva lista de cursos.
-        const exists = newCourses.some(c => c.id === currentSelectedCourseId);
-
-        if (currentSelectedCourseId && exists) {
-            // Si el ID aún existe, mantenerlo (no hacer nada).
-        } else if (newCourses.length > 0) {
-          // Si el ID fue eliminado o estaba vacío, seleccionar el primer curso.
-          setSelectedCourseId(newCourses[0].id);
-        } else {
-          // Si no hay cursos, limpiar todo para evitar referencias a null.
-          setSelectedCourseId('');
-          setStudents([]); 
-        }
+        setPoints(result.points || []);
+      } else {
+        setPoints([]);
       }
     } catch (error) {
-      console.error('Error al cargar cursos:', error);
+      console.error('Error al cargar puntos del curso:', error);
+      setPoints([]);
     } finally {
-      setLoading(false);
+      setLoadingPoints(false);
     }
   };
 

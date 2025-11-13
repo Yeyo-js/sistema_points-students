@@ -1,6 +1,6 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import './input.css';
+import './input.css'; // <-- ÚNICA IMPORTACIÓN CSS CORRECTA
 
 const Input = ({
   type = 'text',
@@ -27,10 +27,8 @@ const Input = ({
     className
   ].filter(Boolean).join(' ');
 
-  // CORRECCIÓN DEFINITIVA: 
-  // 1. Coerción a cadena vacía si es null/undefined.
-  // 2. Coerción explícita a String() para valores numéricos (como 0 o list_number) 
-  //    que pueden causar el bug en inputs controlados.
+  // CORRECCIÓN SISTÉMICA: Aseguramos que el valor sea String o vacío ('')
+  // Esto resuelve el bug recurrente de inputs bloqueados.
   const finalValue = value === null || value === undefined ? '' : String(value);
 
   return (
@@ -39,8 +37,7 @@ const Input = ({
       <input
         type={type}
         name={name}
-        // Usa el valor corregido y forzado a String
-        value={finalValue} 
+        value={finalValue} // Usamos el valor corregido
         onChange={onChange}
         onBlur={onBlur}
         placeholder={placeholder}
@@ -59,8 +56,7 @@ const Input = ({
 Input.propTypes = {
   type: PropTypes.string,
   name: PropTypes.string,
-  // Permite string o number (incluido el valor de 0)
-  value: PropTypes.oneOfType([PropTypes.string, PropTypes.number]), 
+  value: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
   onChange: PropTypes.func,
   onBlur: PropTypes.func,
   placeholder: PropTypes.string,

@@ -23,12 +23,14 @@ const Select = ({
     className
   ].filter(Boolean).join(' ');
 
+  const finalValue = value === null || value === undefined ? '' : value;
+
   return (
     <div className="select-wrapper">
       {icon && <span className="select__icon">{icon}</span>}
       <select
         name={name}
-        value={value}
+        value={finalValue}
         onChange={onChange}
         onBlur={onBlur}
         disabled={disabled}

@@ -1,5 +1,9 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { authService } from '../services';
+// CORRECCIÓN: Importar el módulo completo para acceder al default export
+import * as AuthServiceModule from '../services/authService';
+
+// Accedemos a la instancia 'default' exportada por authService.js
+const authService = AuthServiceModule.default;
 
 const AuthContext = createContext(null);
 
@@ -15,7 +19,8 @@ export const AuthProvider = ({ children }) => {
 
   const checkAuth = async () => {
     try {
-      const token = authService.getToken();
+      // Usamos la instancia 'authService' definida arriba
+      const token = authService.getToken(); 
       
       if (token) {
         const result = await authService.getCurrentUser();
@@ -32,6 +37,8 @@ export const AuthProvider = ({ children }) => {
       }
     } catch (error) {
       console.error('Error al verificar autenticación:', error);
+      // Asegurarse de limpiar el estado en caso de error
+      authService.logout();
       setUser(null);
       setIsAuthenticated(false);
     } finally {
@@ -76,10 +83,12 @@ export const AuthProvider = ({ children }) => {
   const logout = async () => {
     try {
       await authService.logout();
-      setUser(null);
-      setIsAuthenticated(false);
     } catch (error) {
       console.error('Error en logout:', error);
+    } finally {
+      // Asegurar limpieza local
+      setUser(null);
+      setIsAuthenticated(false);
     }
   };
 

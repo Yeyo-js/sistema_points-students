@@ -14,7 +14,7 @@ const PointForm = ({ point = null, studentId, studentName, onSuccess, onCancel }
     participationTypeId: '',
     pointsValue: '',
     reason: '',
-    customTypeName: ''
+    customTypeName: '' //nombre personalizado cuando se selecciona "Otros"
   });
 
   const [participationTypes, setParticipationTypes] = useState([]);
@@ -22,7 +22,7 @@ const PointForm = ({ point = null, studentId, studentName, onSuccess, onCancel }
   const [loading, setLoading] = useState(false);
   const [loadingTypes, setLoadingTypes] = useState(true);
   const [generalError, setGeneralError] = useState('');
-  const [showCustomInput, setShowCustomInput] = useState(false);
+  const [showCustomInput, setShowCustomInput] = useState(false); //controlar visibilidad del input
 
   useEffect(() => {
     loadParticipationTypes();
@@ -41,7 +41,7 @@ const PointForm = ({ point = null, studentId, studentName, onSuccess, onCancel }
 
   // Cuando cambia el tipo de participación, auto-completar puntos
   useEffect(() => {
-    if (formData.participationTypeId && !isEditMode) {
+    if (formData.participationTypeId) {
       // Si selecciona "otros", mostrar input personalizado y no autocompletar puntos
       if (formData.participationTypeId === 'otros') {
         setShowCustomInput(true);
@@ -56,18 +56,39 @@ const PointForm = ({ point = null, studentId, studentName, onSuccess, onCancel }
       const selectedType = participationTypes.find(
         type => type.id === parseInt(formData.participationTypeId)
       );
-      if (selectedType) {
+      if (selectedType && !isEditMode) { // Solo auto-completar en modo creación
         setFormData(prev => ({
           ...prev,
           pointsValue: selectedType.default_points
         }));
       }
-    } else if (formData.participationTypeId === 'otros') {
-      setShowCustomInput(true);
     } else {
       setShowCustomInput(false);
     }
   }, [formData.participationTypeId, participationTypes, isEditMode]);
+
+  // CORRECCIÓN CRÍTICA: Resetea el estado si el ID seleccionado fue eliminado.
+  useEffect(() => {
+    if (
+        participationTypes.length > 0 && 
+        formData.participationTypeId && 
+        formData.participationTypeId !== 'otros'
+    ) {
+      const typeId = parseInt(formData.participationTypeId);
+      const isTypeMissing = !participationTypes.some(type => type.id === typeId);
+
+      if (isTypeMissing) {
+        console.warn(`Tipo de participación con ID ${typeId} no encontrado. Reseteando formulario.`);
+        // Forzar reset de las propiedades clave
+        setFormData(prev => ({
+          ...prev,
+          participationTypeId: '', // Deseleccionar el ID
+          pointsValue: '' // Limpiar puntos
+        }));
+      }
+    }
+  }, [participationTypes, formData.participationTypeId]); // Solo se ejecuta si la lista o el ID cambian
+
 
   const loadParticipationTypes = async () => {
     setLoadingTypes(true);
@@ -78,7 +99,6 @@ const PointForm = ({ point = null, studentId, studentName, onSuccess, onCancel }
       }
     } catch (error) {
       console.error('Error al cargar tipos de participación:', error);
-      setGeneralError('Error al cargar los tipos de participación. Intenta nuevamente.');
     } finally {
       setLoadingTypes(false);
     }
@@ -192,8 +212,7 @@ const PointForm = ({ point = null, studentId, studentName, onSuccess, onCancel }
       if (result.success) {
         console.log(`✅ Punto ${isEditMode ? 'actualizado' : 'asignado'} exitosamente`);
         if (onSuccess) {
-          // CORRECCIÓN: Pasar el resultado completo de la operación (contiene studentTotals)
-          onSuccess(result); 
+          onSuccess(result);
         }
       } else {
         setGeneralError(result.error || `Error al ${isEditMode ? 'actualizar' : 'asignar'} punto`);
